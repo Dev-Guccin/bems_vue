@@ -1,7 +1,7 @@
 <template>
   <div>
     <b-container 
-      class="px-0 mx-auto">
+      class="p-3">
       <b-row>
         <b-col cols=8>
         <b-card>
@@ -116,7 +116,6 @@ export default {
     };
   },
   components: {
-
   },
   methods: {
     restartFunction(){
