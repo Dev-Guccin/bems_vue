@@ -4,8 +4,8 @@ function restartModule(module) {
   return instance.get('/settings/restart_only/'+module)
 }
 
-function createPost(postData) {
-  return instance.post('/', postData)
+function stopModule(module) {
+  return instance.post('/settings/stop_only/' + module)
 }
 
-export { fetchPosts, createPost }
+export { restartModule, stopModule }
