@@ -1,31 +1,20 @@
 <template>
   <div>
     <b-container 
-      class="p-3">
+      class="p-3 body">
       <b-row>
         <b-col cols=8>
-        <b-card>
-          <div class="text-center">
-            <b-spinner v-if="modbus_working == 1" variant="success" small></b-spinner>
-            <b-icon v-if="modbus_working==0" icon="exclamation-circle"></b-icon>
-            <b-icon v-if="modbus_working==2" color='red' icon="exclamation-circle"></b-icon>
-            <span>MODBUS</span>&nbsp;
-            <b-spinner v-if="bacnet_working == 1" variant="success" small></b-spinner>
-            <b-icon v-if="bacnet_working==0" icon="exclamation-circle"></b-icon>
-            <b-icon v-if="bacnet_working==2" color='red' icon="exclamation-circle"></b-icon>
-            <span>BACNET</span>&nbsp;
-            <b-spinner v-if="database_working == 1" variant="success" small></b-spinner>
-            <b-icon v-if="database_working==0" icon="exclamation-circle"></b-icon>
-            <b-icon v-if="database_working==2" color='red' icon="exclamation-circle"></b-icon>
-            <span>DATABASE</span>&nbsp;
-            <b-spinner v-if="batch_working==1" variant="success" small></b-spinner>
-            <b-icon v-if="batch_working==0" icon="exclamation-circle"></b-icon>
-            <b-icon v-if="batch_working==2" color='red' icon="exclamation-circle"></b-icon>
-            <span>BATCH</span>&nbsp;
-          </div>
+        <b-card class="text-center">
+            <div v-for="item in working" v-bind:key="item.title" class="module-info">
+              <b-spinner v-if="item.active == 1" variant="success" small></b-spinner>
+              <b-icon v-if="item.active==0" icon="exclamation-circle"></b-icon>
+              <b-icon v-if="item.active==2" color='red' icon="exclamation-circle"></b-icon>
+              <span>{{item.title}}</span>
+              <span>{{item.active}}</span>
+            </div>
         </b-card>
         </b-col>
-        <b-col>
+        <b-col cols=4>
         <b-button size="sm" variant="outline-secondary" v-on:click="checkFunction()"
           >MODULE CHECK</b-button>
         </b-col>
@@ -36,7 +25,7 @@
       <b-row>
         <b-col>
           <b-form-select
-            plain="true"
+            :plain="true"
             v-model="selected" :options="options"
             ></b-form-select>
         </b-col>
@@ -75,16 +64,17 @@
       </b-card>
       </b-row>
     </b-container>
-      <div v-bind:style="up_btn_style">
-        <b-button
-          bottom right fixed v-on:click="scroll_up()"><b-icon icon='arrow-up-square'></b-icon></b-button><br>
-        <b-button
-          bottom right fixed v-on:click="scroll_down()"><b-icon icon='arrow-down-circle'></b-icon></b-button>
-      </div>
+    <div v-bind:style="up_btn_style">
+       <b-button
+        bottom right fixed v-on:click="scroll_up()"><b-icon icon='arrow-up-square'></b-icon></b-button><br>
+      <b-button
+        bottom right fixed v-on:click="scroll_down()"><b-icon icon='arrow-down-circle'></b-icon></b-button>
+    </div>
   </div>
 </template>
 
 <script>
+import {restartModule, stopModule, checkModule, getLog} from '../api/setting'
 
 export default {
   data() {
@@ -93,6 +83,12 @@ export default {
       bacnet_working:0,
       database_working:0,
       batch_working:0,
+      working:[
+        {title:"modbus", active:0},
+        {title:"bacnet", active:0},
+        {title:"database", active:0},
+        {title:"batch", active:0},
+      ],
       module_check: "",
       logFile: "Click check button",
       moduleSelected:"modbus",
@@ -118,69 +114,73 @@ export default {
   components: {
   },
   methods: {
-    restartFunction(){
-      this.$http.get("/api/settings/restart_only/"+this.selected).then((response) =>{
-          console.log(response);
-          this.checkFunction();
-        })
-        .catch(function(error) {
-          console.log(error);
-        });
+    async restartFunction(){
+      try{
+        const res = await restartModule(this.selected)
+        if(res.data.success){
+          console.log("success")
+          setTimeout(() => { // 5초 뒤에 모듈의 상태를 체크한다.
+            this.checkFunction()
+          }, 5000);
+        }else{
+          console.log("fail")
+        }
+      }catch(err){
+        console.log(err)
+        console.log("error")
+      }
     },
-    stopFunction(){
-      this.$http.get("/api/settings/stop_only/"+this.selected).then((response) =>{
-          console.log(response);
-          this.checkFunction();
-        })
-        .catch(function(error) {
-          console.log(error);
-        });
+    async stopFunction(){
+      try{
+        const res = await stopModule(this.selected)
+        if(res.data.success){
+          console.log("success")
+          setTimeout(() => { // 5초 뒤에 모듈의 상태를 체크한다.
+            this.checkFunction()
+          }, 5000);
+        }else{
+          console.log("fail")
+        }
+      }catch(err){
+        console.log(err)
+        console.log("error")
+      }
     },
-    checkFunction(){
-      this.$http.get("/api/settings/module_check").then((response) => {
-          console.log(response);
-          this.module_check = response.data
-          // 정제하기
-          if(this.module_check.modbus == "online")
-            this.modbus_working = 1;
-          else if(this.module_check.modbus == "stopped")
-            this.modbus_working = 2;
-          else
-            this.modbus_working = 0;
-          if(this.module_check.bacnet == "online")
-            this.bacnet_working = 1;
-          else if(this.module_check.bacnet == "stopped")
-            this.bacnet_working = 2;
-          else
-            this.bacnet_working = 0;
-          if(this.module_check.database == "online")
-            this.database_working = 1;
-          else if(this.module_check.databse == "stopped")
-            this.database_working = 2;
-          else
-            this.database_working = 0;
-          if(this.module_check.batch == "online")
-            this.batch_working = 1;
-          else if(this.module_check.batch == "stopped")
-            this.batch_working = 2;
-          else
-            this.batch_working = 0;
-        })
-        .catch(function(error) {
-          console.log(error);
-        });
+    async checkFunction(){
+      try{
+        const res = await checkModule()
+        if(res.data.success){
+          const statusinfo = res.data.checklist
+          this.working.forEach(item => {
+            if( statusinfo[item.title] == "online" )
+              item.active = 1;
+            else if(statusinfo[item.title] == "stopped")
+              item.active = 2;
+            else
+              item.active = 0;
+          });
+        }else{
+          console.log("fail")
+        }
+      }catch(err){
+        console.log(err)
+        console.log('error')
+      }
     },
-    log_check(){
-       this.$http.get("/api/settings/module_log_check/"+this.selected+"/"+this.console_selected).then((response) => {
-          console.log(response.data);
-          console.log(this.logFile);
-          this.logFile = response.data.replace(/\n/g, '<br />');
-        })
-        .catch((error) => {
-          if(error){
-            console.log(error);
-          }
-      });
+    async log_check(){
+      try{
+        const res = await getLog(this.selected, this.console_selected)
+        if(res.data.success){
+          console.log("success")
+          this.logFile = res.data.logData.replace(/\n/g, '<br />');
+        }
+        else{
+          console.log("fail")
+        }
+      }catch(err){
+        console.log(err)
+          console.log("error")
+      }
     },
     scroll_up(){
       window.scrollTo(0,0)
@@ -189,7 +189,16 @@ export default {
       var container = this.$el.querySelector(".container");
       window.scrollTo(0,container.scrollHeight);
     },
-    
   }
 }
 </script>
+<style>
+.body{
+  width: 50px;
+}
+.module-info{
+  display: inline-block;
+  padding-left: 10px;
+  padding-right: 10px;
+}
+</style>

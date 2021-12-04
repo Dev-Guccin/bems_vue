@@ -5,7 +5,15 @@ function restartModule(module) {
 }
 
 function stopModule(module) {
-  return instance.post('/settings/stop_only/' + module)
+  return instance.get('/settings/stop_only/' + module)
 }
 
-export { restartModule, stopModule }
+function checkModule(){
+  return instance.get(`/settings/module_check`)
+}
+
+function getLog(module, type){
+  return instance.get(`/settings/module_log_check/${module}/${type}`)
+}
+
+export { restartModule, stopModule, checkModule, getLog }
