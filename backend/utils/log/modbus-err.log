@@ -1,0 +1,17 @@
+Error: The module '\\?\C:\4msys\backend\node_modules\@serialport\bindings\build\Release\bindings.node'
+was compiled against a different Node.js version using
+NODE_MODULE_VERSION 83. This version of Node.js requires
+NODE_MODULE_VERSION 93. Please try re-compiling or re-installing
+the module (for instance, using `npm rebuild` or `npm install`).
+    at Object.Module._extensions..node (node:internal/modules/cjs/loader:1183:18)
+    at Module.load (node:internal/modules/cjs/loader:981:32)
+    at Function.Module._load (node:internal/modules/cjs/loader:822:12)
+    at Module.require (node:internal/modules/cjs/loader:1005:19)
+    at Module.Hook._require.Module.require (C:\Users\ghks2\AppData\Roaming\npm\node_modules\pm2\node_modules\require-in-the-middle\index.js:80:39)
+    at require (node:internal/modules/cjs/helpers:102:18)
+    at bindings (C:\4msys\backend\node_modules\bindings\bindings.js:112:48)
+    at Object.<anonymous> (C:\4msys\backend\node_modules\@serialport\bindings\lib\win32.js:1:36)
+    at Module._compile (node:internal/modules/cjs/loader:1101:14)
+    at Object.Module._extensions..js (node:internal/modules/cjs/loader:1153:10) {
+  code: 'ERR_DLOPEN_FAILED'
+}
