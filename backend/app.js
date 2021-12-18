@@ -9,6 +9,10 @@ var settingsRouter = require('./routes/settings');
 
 var app = express();
 
+// init
+var init = require('./init')
+init.initPm2Restart()
+
 // view engine setup
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'jade');

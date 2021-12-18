@@ -11,6 +11,12 @@ let config = {
     broadcastAddress: '192.168.219.255',
     apduTimeout: 10000,
   },
+  module: {
+    modbus: 1,
+    bacnet: 1,
+    database: 0,
+    batch: 1,
+  },
 }
 
 module.exports = config
