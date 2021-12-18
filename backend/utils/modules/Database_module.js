@@ -36,6 +36,9 @@ async function get_database_info() {
       for (let j = 1; j < sheetData[i].length; j++) {
         tmp[key[j - 1]] = sheetData[i][j].value
       }
+      if (tmp['DB_Id'] == '*') {
+        break
+      }
       DATABASE.push(tmp) //데이터객체를  넣어준다.
     }
     //console.log(DATABASE)
