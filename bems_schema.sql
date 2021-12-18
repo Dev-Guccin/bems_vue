@@ -24,7 +24,7 @@ DROP TABLE IF EXISTS `10minute`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `10minute` (
   `id` int NOT NULL AUTO_INCREMENT,
-  `object_name` char(30) NOT NULL,
+  `object_name` char(60) NOT NULL,
   `log_time` datetime NOT NULL,
   `log_value` float NOT NULL,
   PRIMARY KEY (`id`)
@@ -40,7 +40,7 @@ DROP TABLE IF EXISTS `1day`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `1day` (
   `id` int NOT NULL AUTO_INCREMENT,
-  `object_name` char(30) NOT NULL,
+  `object_name` char(60) NOT NULL,
   `log_time` datetime NOT NULL,
   `log_value` float NOT NULL,
   PRIMARY KEY (`id`)
@@ -56,7 +56,7 @@ DROP TABLE IF EXISTS `1hour`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `1hour` (
   `id` int NOT NULL AUTO_INCREMENT,
-  `object_name` char(30) NOT NULL,
+  `object_name` char(60) NOT NULL,
   `log_time` datetime NOT NULL,
   `log_value` float NOT NULL,
   PRIMARY KEY (`id`)
@@ -72,7 +72,7 @@ DROP TABLE IF EXISTS `1month`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `1month` (
   `id` int NOT NULL AUTO_INCREMENT,
-  `object_name` char(30) NOT NULL,
+  `object_name` char(60) NOT NULL,
   `log_time` datetime NOT NULL,
   `log_value` float NOT NULL,
   PRIMARY KEY (`id`)
@@ -88,7 +88,7 @@ DROP TABLE IF EXISTS `1year`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `1year` (
   `id` int NOT NULL AUTO_INCREMENT,
-  `object_name` char(30) NOT NULL,
+  `object_name` char(60) NOT NULL,
   `log_time` datetime NOT NULL,
   `log_value` float NOT NULL,
   PRIMARY KEY (`id`)
@@ -104,7 +104,7 @@ DROP TABLE IF EXISTS `bacnet_device`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `bacnet_device` (
   `id` int NOT NULL,
-  `name` char(30) NOT NULL,
+  `name` char(60) NOT NULL,
   `address` char(30) NOT NULL,
   `broadcast_address` char(15) NOT NULL,
   `port` int DEFAULT NULL,
@@ -125,7 +125,7 @@ DROP TABLE IF EXISTS `bacnet_station`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `bacnet_station` (
   `id` int NOT NULL,
-  `object_name` char(30) NOT NULL,
+  `object_name` char(60) NOT NULL,
   `device_id` int NOT NULL,
   `object` char(5) NOT NULL,
   `object_type` int NOT NULL,
@@ -148,7 +148,7 @@ DROP TABLE IF EXISTS `ctrl_log`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `ctrl_log` (
   `id` int NOT NULL,
-  `object_name` char(30) NOT NULL,
+  `object_name` char(60) NOT NULL,
   `network_type` char(10) NOT NULL,
   `network_id` int NOT NULL DEFAULT '-1',
   `ctrl_value` float DEFAULT NULL,
@@ -167,7 +167,7 @@ DROP TABLE IF EXISTS `modbus_channel`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `modbus_channel` (
   `id` int NOT NULL,
-  `name` char(30) NOT NULL,
+  `name` char(60) NOT NULL,
   `network_id` int NOT NULL,
   `function_code` int NOT NULL,
   `device_address` int NOT NULL,
@@ -230,7 +230,7 @@ DROP TABLE IF EXISTS `modbus_network`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `modbus_network` (
   `id` int NOT NULL,
-  `name` char(30) NOT NULL,
+  `name` char(60) NOT NULL,
   `network_type` char(15) NOT NULL,
   `address` char(15) NOT NULL,
   `port` int DEFAULT NULL,
