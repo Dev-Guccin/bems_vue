@@ -7,7 +7,9 @@ let router = express.Router()
 //api/settings/restart_only/modbus
 router.get('/restart_only/:module', function (req, res, next) {
   console.log('restart_only_module : ', req.params.module)
+  Handler.stop_only('batch')
   Handler.restart_only(req.params.module)
+  Handler.restart_only('batch')
   res.send('respond with a resource')
 })
 router.get('/stop_only/:module', function (req, res, next) {
