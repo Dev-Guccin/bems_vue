@@ -1,8 +1,8 @@
--- MySQL dump 10.13  Distrib 8.0.27, for Win64 (x86_64)
+-- MySQL dump 10.13  Distrib 8.0.26, for Win64 (x86_64)
 --
 -- Host: localhost    Database: bems
 -- ------------------------------------------------------
--- Server version	8.0.27
+-- Server version	8.0.26
 
 /*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
 /*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
@@ -24,11 +24,11 @@ DROP TABLE IF EXISTS `10minute`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `10minute` (
   `id` int NOT NULL AUTO_INCREMENT,
-  `object_name` char(60) NOT NULL,
+  `object_name` char(30) NOT NULL,
   `log_time` datetime NOT NULL,
   `log_value` float NOT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=87206 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=118 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -40,11 +40,11 @@ DROP TABLE IF EXISTS `1day`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `1day` (
   `id` int NOT NULL AUTO_INCREMENT,
-  `object_name` char(60) NOT NULL,
+  `object_name` char(30) NOT NULL,
   `log_time` datetime NOT NULL,
   `log_value` float NOT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=583 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -56,11 +56,11 @@ DROP TABLE IF EXISTS `1hour`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `1hour` (
   `id` int NOT NULL AUTO_INCREMENT,
-  `object_name` char(60) NOT NULL,
+  `object_name` char(30) NOT NULL,
   `log_time` datetime NOT NULL,
   `log_value` float NOT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=14451 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=19 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -72,7 +72,7 @@ DROP TABLE IF EXISTS `1month`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `1month` (
   `id` int NOT NULL AUTO_INCREMENT,
-  `object_name` char(60) NOT NULL,
+  `object_name` char(30) NOT NULL,
   `log_time` datetime NOT NULL,
   `log_value` float NOT NULL,
   PRIMARY KEY (`id`)
@@ -88,7 +88,7 @@ DROP TABLE IF EXISTS `1year`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `1year` (
   `id` int NOT NULL AUTO_INCREMENT,
-  `object_name` char(60) NOT NULL,
+  `object_name` char(30) NOT NULL,
   `log_time` datetime NOT NULL,
   `log_value` float NOT NULL,
   PRIMARY KEY (`id`)
@@ -104,7 +104,7 @@ DROP TABLE IF EXISTS `bacnet_device`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `bacnet_device` (
   `id` int NOT NULL,
-  `name` char(60) NOT NULL,
+  `name` char(30) NOT NULL,
   `address` char(30) NOT NULL,
   `broadcast_address` char(15) NOT NULL,
   `port` int DEFAULT NULL,
@@ -125,8 +125,10 @@ DROP TABLE IF EXISTS `bacnet_station`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `bacnet_station` (
   `id` int NOT NULL,
-  `object_name` char(60) NOT NULL,
+  `object_name` char(30) NOT NULL,
   `device_id` int NOT NULL,
+  `net` int DEFAULT NULL,
+  `mac` char(30) DEFAULT NULL,
   `object` char(5) NOT NULL,
   `object_type` int NOT NULL,
   `object_instance` int NOT NULL,
@@ -148,7 +150,7 @@ DROP TABLE IF EXISTS `ctrl_log`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `ctrl_log` (
   `id` int NOT NULL,
-  `object_name` char(60) NOT NULL,
+  `object_name` char(30) NOT NULL,
   `network_type` char(10) NOT NULL,
   `network_id` int NOT NULL DEFAULT '-1',
   `ctrl_value` float DEFAULT NULL,
@@ -167,7 +169,7 @@ DROP TABLE IF EXISTS `modbus_channel`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `modbus_channel` (
   `id` int NOT NULL,
-  `name` char(60) NOT NULL,
+  `name` char(30) NOT NULL,
   `network_id` int NOT NULL,
   `function_code` int NOT NULL,
   `device_address` int NOT NULL,
@@ -191,7 +193,7 @@ DROP TABLE IF EXISTS `modbus_data`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `modbus_data` (
-  `object_name` char(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
+  `object_name` char(30) NOT NULL,
   `object_type` char(4) NOT NULL,
   `id` int NOT NULL,
   `unit` char(5) DEFAULT NULL,
@@ -230,7 +232,7 @@ DROP TABLE IF EXISTS `modbus_network`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `modbus_network` (
   `id` int NOT NULL,
-  `name` char(60) NOT NULL,
+  `name` char(30) NOT NULL,
   `network_type` char(15) NOT NULL,
   `address` char(15) NOT NULL,
   `port` int DEFAULT NULL,
@@ -251,7 +253,7 @@ DROP TABLE IF EXISTS `realtime_table`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `realtime_table` (
   `id` int NOT NULL,
-  `object_name` char(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
+  `object_name` char(30) NOT NULL,
   `log_value` float NOT NULL,
   `ctrl_value` float DEFAULT NULL,
   `log_time` datetime NOT NULL,
@@ -271,4 +273,4 @@ CREATE TABLE `realtime_table` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2021-12-18 16:34:45
+-- Dump completed on 2021-12-19  1:31:44
