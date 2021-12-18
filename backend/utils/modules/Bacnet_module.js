@@ -76,6 +76,26 @@ async function bacnet_device_poll(i, id) {
     station[i] = await DBH.get_station_from_id(idslist[i].id)
     //console.log("station : ", station[i])
     if (station[i].active != 1) continue
+    if (station[i].mac !== undefined) {
+      const makeMac = (macString) => {
+        let macArray = macString.split(/[.|:]/)
+        const port = Number(macArray.pop())
+
+        const hexString = port.toString(16) //decimal to hex
+        const _hexString = hexString.padStart(4, '0')
+        macArray.push(_hexString.slice(0, 2))
+        macArray.push(_hexString.slice(2, 4))
+        console.log(macArray)
+        return macArray.map(function (numString) {
+          return parseInt(numString, 10)
+        })
+      }
+      ip_address = {
+        address: ip_address,
+        net: station[i].net,
+        addr: makeMac(station[i].mac),
+      }
+    }
     requestArray[i] = {
       objectId: {
         type: station[i].object_type,
@@ -90,29 +110,34 @@ async function bacnet_device_poll(i, id) {
 }
 function sync_readPropertyMultiple(ip_address, requestArray, station) {
   return new Promise((resolve, reject) => {
-    client.readPropertyMultiple(ip_address, requestArray, (err, value) => {
-      if (err) {
-        console.log(err)
-        resolve()
-      }
-      if (value) {
-        console.log(value)
-        //데이터를 받았으니 이제 값을 realtime_table에 넣어준다.
-        for (let i = 0; i < value.values.length; i++) {
-          let element = value.values[i]
-          if (typeof element.values[0].value[0].value == typeof {}) continue
-          DBH.realtime_upsert_bacnet(
-            station[i].id,
-            station[i].object_name,
-            element.values[0].value[0].value,
-            station[i].object,
-            station[i].id
-          )
+    try {
+      client.readPropertyMultiple(ip_address, requestArray, (err, value) => {
+        if (err) {
+          console.log(err)
+          resolve()
         }
-        //통신도 끝나고 DB작업도 끝났기 때문에 동기 방식을 종료한다.
-        resolve()
-      }
-    })
+        if (value) {
+          console.log(value)
+          //데이터를 받았으니 이제 값을 realtime_table에 넣어준다.
+          for (let i = 0; i < value.values.length; i++) {
+            let element = value.values[i]
+            if (typeof element.values[0].value[0].value == typeof {}) continue
+            DBH.realtime_upsert_bacnet(
+              station[i].id,
+              station[i].object_name,
+              element.values[0].value[0].value,
+              station[i].object,
+              station[i].id
+            )
+          }
+          //통신도 끝나고 DB작업도 끝났기 때문에 동기 방식을 종료한다.
+          resolve()
+        }
+      })
+    } catch (err) {
+      console.log(err)
+      resolve()
+    }
   })
 }
 main()
