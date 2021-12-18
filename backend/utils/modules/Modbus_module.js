@@ -4,13 +4,16 @@ const Modbus = require('jsmodbus')
 const SerialPort = require('serialport')
 const net = require('net')
 let Excel = require('./get_excel.js')
+const { type } = require('os')
 const sockets = []
 const clients = []
 const rtu_clients = []
+const tcp_clients = []
 
 let Networks
 let channel_range = {}
 modbus_poll()
+require('events').EventEmitter.prototype._maxListeners = 100;
 
 async function modbus_poll() {
   await Excel.loadExcelFile_modbus()
@@ -33,86 +36,96 @@ async function modbus_poll() {
   modbusStart()
 }
 
-
-function modbusStart() {
+async function modbusStart() {
   for (let i = 0; i < Networks.length; i++) {
     // 소켓을 설정하고 열어준다.
     if (Networks[i].active == 0) continue
 
     if (Networks[i].network_type == 'tcp/ip') {
       sockets[i] = new net.Socket() //socket을 객체로 다루기 위해 설정해준다.
-      clients[i] = new Modbus.client.TCP(sockets[i]) // tcp를 열어준다.
-      //tcp설정
+      tcp_clients[i] = []
       let options = {
         host: Networks[i].address,
         port: Networks[i].port,
         autoReconnect: true,
         timeout: Networks[i].wait_time,
       }
-
-      sockets[i].on('connect', async function () {
-        //소켓이 연결되는 경우 어떻게 사용할 건지
-        console.log('connected!!!!', Networks[i].address)
-        console.log(Networks[i].id)
-        let targetchannels = await DBH.get_targetChannels(Networks[i].id)
-        // coneole.log(targetchannels)
-        console.log('targetFrame!!!', targetchannels)
-        setInterval(() => {
-          console.log('SetInterval!')
-          for (let fi = 0; fi < targetchannels.length; fi++) {
-            //frame의 개수만큼 반복하는 코드
-            console.log('check:', fi)
-            if (targetchannels[fi].active == 1) {
-              let func
-              // active 상태일때만 반복시킴
-              // console.log("타켓을 보자", targetchannels[fi])
-              switch (targetchannels[fi].function_code) {
-                case 0: //Read Coils
-                  func = clients[i].readCoils(
-                    targetchannels[fi].start_address,
-                    targetchannels[fi].quantity
-                  )
-                  break
-                case 1: //Read Discrete Input
-                  func = clients[i].readDiscreteInputs(
-                    targetchannels[fi].start_address,
-                    targetchannels[fi].quantity
-                  )
-                  break
-                case 3: //Read Holding Registers
-                  func = clients[i].readHoldingRegisters(
-                    targetchannels[fi].start_address,
-                    targetchannels[fi].quantity
-                  )
-                  break
-                case 4: //Read Input Registers
-                  func = clients[i].readInputRegisters(
-                    targetchannels[fi].start_address,
-                    targetchannels[fi].quantity
-                  )
-                  break
-              }
-              DBH.channel_inc('tx', targetchannels[fi].id)
-              func
-                .then(function (resp) {
-                  response_process(targetchannels[fi], resp)
-                })
-                .catch(function () {
-                  DBH.channel_inc('err', targetchannels[fi].id)
-                  console.log('socket network error')
-                  console.log(Networks[i].address)
-                  console.error(arguments)
-                  //sockets[i].end() 오류가 생겨도 닫지 않는다. 다른 frame 통신을 위해서
-                })
-            }
-          }
-        }, Networks[i].period)
-      })
+      let device_list = []
+      let targetchannels = await DBH.get_targetChannels(Networks[i].id)
+      for (let fi = 0; fi < targetchannels.length; fi++) {
+        let slave_id = targetchannels[fi].device_address
+        if (device_list[slave_id] == undefined) {
+          device_list[slave_id] = [fi]
+        } else {
+          device_list[slave_id].push(fi)
+        }
+      }
+      
+      sockets[i].connect(options) // 실제로 포트를 열어준다.
+      for (let di = 0; di < device_list.length; di++) {
+        if (device_list[di] != undefined) {
+          tcp_clients[i][di] = new Modbus.client.TCP(sockets[i], di) // tcp를 열어준다.
+          sockets[i].on('connect', async function () {
+            //소켓이 연결되는 경우 어떻게 사용할 건지
+            setInterval(async () => {
+              console.log('SetInterval!')
+              for (let ci = 0; ci < device_list[di].length; ci++) {
+                console.log(device_list[di][ci])
+                let fi = device_list[di][ci]
+                let slave_id = targetchannels[fi].device_address
+                //frame의 개수만큼 반복하는 코드
+                if (targetchannels[fi].active == 1) {
+                  let func
+                  // active 상태일때만 반복시킴
+                  switch (targetchannels[fi].function_code) {
+                    case 0: //Read Coils
+                      func = tcp_clients[i][slave_id].readCoils(
+                        targetchannels[fi].start_address,
+                        targetchannels[fi].quantity
+                      )
+                      break
+                    case 1: //Read Discrete Input
+                      func = tcp_clients[i][slave_id].readDiscreteInputs(
+                        targetchannels[fi].start_address,
+                        targetchannels[fi].quantity
+                      )
+                      break
+                    case 3: //Read Holding Registers
+                      console.log('start:', targetchannels[fi].start_address)
+                      console.log('count:', targetchannels[fi].quantity)
+                      func = tcp_clients[i][slave_id].readHoldingRegisters(
+                        targetchannels[fi].start_address,
+                        targetchannels[fi].quantity
+                      )
+                      break
+                    case 4: //Read Input Registers
+                      func = tcp_clients[i][slave_id].readInputRegisters(
+                        targetchannels[fi].start_address,
+                        targetchannels[fi].quantity
+                      )
+                      break
+                  }
+                  DBH.channel_inc('tx', targetchannels[fi].id)
+                  func
+                    .then(function (resp) {
+                      response_process(targetchannels[fi], resp)
+                    })
+                    .catch(function (err) {
+                      DBH.channel_inc('err', targetchannels[fi].id)
+                      console.log('socket network error')
+                      console.log(Networks[i].address)
+                      console.error(arguments)
+                      //sockets[i].end() 오류가 생겨도 닫지 않는다. 다른 frame 통신을 위해서
+                    })
+                }
+              } ////////
+            }, Networks[i].period)
+          }) //on
+        }}
       sockets[i].on('error', function () {
         //에러가 발생하면 어떻게 할건지
         console.log('errored !!!!!!', Networks[i].address)
       })
-      sockets[i].connect(options) // 실제로 포트를 열어준다.
     } else if (Networks[i].network_type == 'rtu') {
       // 소켓을 열어준다.
       sockets[i] = new SerialPort(Networks[i].address, {
@@ -182,7 +195,8 @@ function modbusStart() {
 async function response_process(targetchannels_fi, resp) {
   DBH.channel_inc('rx', targetchannels_fi.id)
   let se, sensors, targetIdx, resData, res
-  let modbus_result = resp.response._body._valuesAsBuffer
+  let resp_buffer = resp.response._body._valuesAsBuffer
+  let modbus_result = Buffer.alloc(Buffer.byteLength(resp_buffer, 'utf8'))
   //console.log(modbus_result, Buffer.byteLength(modbus_result, 'utf8'), targetchannels_fi.quantity)
   //이제 여기서 데이터를 정규화 하는 작업 해야함
   sensors = await DBH.get_targetdatas(targetchannels_fi.id) //detail객체
@@ -191,6 +205,7 @@ async function response_process(targetchannels_fi, resp) {
   for (se = 0; se < sensors.length; se++) {
     if (sensors[se].active == 0) continue
     try {
+      resp_buffer.copy(modbus_result)
       targetIdx = (sensors[se].m_addr - targetchannels_fi.start_address) * 2
       switch (sensors[se].m_dattype) {
         case 0: //unsigned int 16bit AB
