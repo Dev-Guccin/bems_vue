@@ -178,11 +178,13 @@ var Excel = {
               STATION.Id = sheetData[i][1].value
               STATION.Object_Name = sheetData[i][2].value
               STATION.Device_Id = sheetData[i][3].value
-              STATION.Object = sheetData[i][4].value
-              STATION.Object_type = sheetData[i][5].value
-              STATION.Object_instance = sheetData[i][6].value
-              STATION.Value_type = sheetData[i][7].value
-              STATION.Active = sheetData[i][8].value
+              STATION.Net = sheetData[i][4].value
+              STATION.Mac = sheetData[i][5].value
+              STATION.Object = sheetData[i][6].value
+              STATION.Object_type = sheetData[i][7].value
+              STATION.Object_instance = sheetData[i][8].value
+              STATION.Value_type = sheetData[i][9].value
+              STATION.Active = sheetData[i][10].value
               // 이걸 DB에 저장해야함
               await DBH.insert_table(page, STATION)
             }

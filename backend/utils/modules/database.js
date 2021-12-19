@@ -363,8 +363,8 @@ var Database = {
       //Station
       return new Promise(function (resolve, reject) {
         connection.query(
-          `INSERT INTO bacnet_station (id,object_name,device_id,object,object_type,object_instance,value_type,active)
-                VALUES(${data.Id},'${data.Object_Name}',${data.Device_Id},'${data.Object}',${data.Object_type},${data.Object_instance},${data.Value_type},${data.Active})`,
+          `INSERT INTO bacnet_station (id, object_name, device_id, net, mac, object,object_type,object_instance,value_type,active)
+                VALUES(${data.Id},'${data.Object_Name}',${data.Device_Id},${data.Net},'${data.Mac}','${data.Object}',${data.Object_type},${data.Object_instance},${data.Value_type},${data.Active})`,
           function (error, rows, fields) {
             // connection.end();
             if (error) {
