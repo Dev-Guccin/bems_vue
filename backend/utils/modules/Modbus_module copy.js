@@ -5,19 +5,15 @@ const SerialPort = require('serialport')
 const net = require('net')
 let Excel = require('./get_excel.js')
 const { type } = require('os')
-const { select_not_null } = require('./database.js')
 const sockets = []
-const options = []
 const clients = []
 const rtu_clients = []
 const tcp_clients = []
 
-let count = 0
-
 let Networks
 let channel_range = {}
 modbus_poll()
-require('events').EventEmitter.prototype._maxListeners = 100
+require('events').EventEmitter.prototype._maxListeners = 100;
 
 async function modbus_poll() {
   await Excel.loadExcelFile_modbus()
@@ -48,14 +44,14 @@ async function modbusStart() {
     if (Networks[i].network_type == 'tcp/ip') {
       sockets[i] = new net.Socket() //socket을 객체로 다루기 위해 설정해준다.
       tcp_clients[i] = []
-      options[i] = {
+      let options = {
         host: Networks[i].address,
         port: Networks[i].port,
         autoReconnect: true,
         timeout: Networks[i].wait_time,
       }
       let device_list = []
-      let targetchannels = await DBH.get_targetChannels(Networks[i].id) // device id별 채널 가져온다.
+      let targetchannels = await DBH.get_targetChannels(Networks[i].id)
       for (let fi = 0; fi < targetchannels.length; fi++) {
         let slave_id = targetchannels[fi].device_address
         if (device_list[slave_id] == undefined) {
@@ -64,86 +60,71 @@ async function modbusStart() {
           device_list[slave_id].push(fi)
         }
       }
-      console.log('devicelist :', device_list)
-
+      
+      sockets[i].connect(options) // 실제로 포트를 열어준다.
       for (let di = 0; di < device_list.length; di++) {
         if (device_list[di] != undefined) {
-          console.log('di:', di)
           tcp_clients[i][di] = new Modbus.client.TCP(sockets[i], di) // tcp를 열어준다.
-        }
-      }
-      sockets[i].connect(options[i]) // 실제로 포트를 열어준다.
-      sockets[i].on('connect', async function () {
-        console.log('connect!!:', options[i])
-        //소켓이 연결되는 경우 어떻게 사용할 건지
-        for (let di = 0; di < device_list.length; di++) {
-          if (device_list[di] != undefined) {
-            console.log('device_list[di]:', device_list[di])
-
-            for (let ci = 0; ci < device_list[di].length; ci++) {
-              console.log(device_list[di][ci])
-              let fi = device_list[di][ci]
-              let slave_id = targetchannels[fi].device_address
-
-              //frame의 개수만큼 반복하는 코드
-              if (targetchannels[fi].active == 1) {
-                let func
-                // active 상태일때만 반복시킴
-                switch (targetchannels[fi].function_code) {
-                  case 0: //Read Coils
-                    func = tcp_clients[i][slave_id].readCoils(
-                      targetchannels[fi].start_address,
-                      targetchannels[fi].quantity
-                    )
-                    break
-                  case 1: //Read Discrete Input
-                    func = tcp_clients[i][slave_id].readDiscreteInputs(
-                      targetchannels[fi].start_address,
-                      targetchannels[fi].quantity
-                    )
-                    break
-                  case 3: //Read Holding Registers
-                    func = tcp_clients[i][slave_id].readHoldingRegisters(
-                      targetchannels[fi].start_address,
-                      targetchannels[fi].quantity
-                    )
-                    break
-                  case 4: //Read Input Registers
-                    func = tcp_clients[i][slave_id].readInputRegisters(
-                      targetchannels[fi].start_address,
-                      targetchannels[fi].quantity
-                    )
-                    break
+          sockets[i].on('connect', async function () {
+            //소켓이 연결되는 경우 어떻게 사용할 건지
+            setInterval(async () => {
+              console.log('SetInterval!')
+              for (let ci = 0; ci < device_list[di].length; ci++) {
+                console.log(device_list[di][ci])
+                let fi = device_list[di][ci]
+                let slave_id = targetchannels[fi].device_address
+                //frame의 개수만큼 반복하는 코드
+                if (targetchannels[fi].active == 1) {
+                  let func
+                  // active 상태일때만 반복시킴
+                  switch (targetchannels[fi].function_code) {
+                    case 0: //Read Coils
+                      func = tcp_clients[i][slave_id].readCoils(
+                        targetchannels[fi].start_address,
+                        targetchannels[fi].quantity
+                      )
+                      break
+                    case 1: //Read Discrete Input
+                      func = tcp_clients[i][slave_id].readDiscreteInputs(
+                        targetchannels[fi].start_address,
+                        targetchannels[fi].quantity
+                      )
+                      break
+                    case 3: //Read Holding Registers
+                      console.log('start:', targetchannels[fi].start_address)
+                      console.log('count:', targetchannels[fi].quantity)
+                      func = tcp_clients[i][slave_id].readHoldingRegisters(
+                        targetchannels[fi].start_address,
+                        targetchannels[fi].quantity
+                      )
+                      break
+                    case 4: //Read Input Registers
+                      func = tcp_clients[i][slave_id].readInputRegisters(
+                        targetchannels[fi].start_address,
+                        targetchannels[fi].quantity
+                      )
+                      break
+                  }
+                  DBH.channel_inc('tx', targetchannels[fi].id)
+                  func
+                    .then(function (resp) {
+                      response_process(targetchannels[fi], resp)
+                    })
+                    .catch(function (err) {
+                      DBH.channel_inc('err', targetchannels[fi].id)
+                      console.log('socket network error')
+                      console.log(Networks[i].address)
+                      console.error(arguments)
+                      //sockets[i].end() 오류가 생겨도 닫지 않는다. 다른 frame 통신을 위해서
+                    })
                 }
-                DBH.channel_inc('tx', targetchannels[fi].id)
-                try {
-                  let res = await func
-                  count += 1
-                  console.log('count:', count)
-                  console.log('res:', res.response._body.valuesAsArray)
-                  response_process(targetchannels[fi], res)
-                  await sleep(Networks[i].period)
-                } catch (err) {
-                  DBH.channel_inc('err', targetchannels[fi].id)
-                  console.log('socket network error')
-                  console.log('err:', err)
-                  console.log(Networks[i].address)
-                  console.error(arguments)
-                }
-              }
-            }
-          }
-        }
-        sockets[i].end()
-      }) //on
-      sockets[i].on('error', function (err) {
+              } ////////
+            }, Networks[i].period)
+          }) //on
+        }}
+      sockets[i].on('error', function () {
         //에러가 발생하면 어떻게 할건지
         console.log('errored !!!!!!', Networks[i].address)
-        console.log('err:', err)
-      })
-      sockets[i].on('close', function () {
-        console.log('closed!!!')
-        sockets[i].connect(options[i]) // 실제로 포트를 열어준다.
       })
     } else if (Networks[i].network_type == 'rtu') {
       // 소켓을 열어준다.
@@ -153,57 +134,59 @@ async function modbusStart() {
       rtu_clients[i] = []
       sockets[i].on('open', async function () {
         let targetchannels = await DBH.get_targetChannels(Networks[i].id) // ip의 id에 해당하는 데이터들을 가져온다.
-        for (let fi = 0; fi < targetchannels.length; fi++) {
-          // socket과 slave_id를 통해 clients를 열어준다.
-          // device_id를 뽑아서 확인한다.
-          let slave_id = targetchannels[fi].device_address
-          if (rtu_clients[i][slave_id] == undefined) {
-            rtu_clients[i][slave_id] = new Modbus.client.RTU(
-              sockets[i],
-              slave_id
-            ) // 선언해서 device_id로 rtu 연동한다.
-          }
-          if (targetchannels[fi].active == 1) {
-            // active 상태일때만 반복시킴
-            switch (targetchannels[fi].function_code) {
-              case 0: //Read Coils
-                func = rtu_clients[i][slave_id].readCoils(
-                  targetchannels[fi].start_address,
-                  targetchannels[fi].quantity
-                )
-                break
-              case 1: //Read Discrete Input
-                func = rtu_clients[i][slave_id].readDiscreteInputs(
-                  targetchannels[fi].start_address,
-                  targetchannels[fi].quantity
-                )
-                break
-              case 3: //Read Holding Registers
-                func = rtu_clients[i][slave_id].readHoldingRegisters(
-                  targetchannels[fi].start_address,
-                  targetchannels[fi].quantity
-                )
-                break
-              case 4: //Read Input Registers
-                func = rtu_clients[i][slave_id].readInputRegisters(
-                  targetchannels[fi].start_address,
-                  targetchannels[fi].quantity
-                )
-                break
+        setInterval(async () => {
+          for (let fi = 0; fi < targetchannels.length; fi++) {
+            // socket과 slave_id를 통해 clients를 열어준다.
+            // device_id를 뽑아서 확인한다.
+            let slave_id = targetchannels[fi].device_address
+            if (rtu_clients[i][slave_id] == undefined) {
+              rtu_clients[i][slave_id] = new Modbus.client.RTU(
+                sockets[i],
+                slave_id
+              ) // 선언해서 device_id로 rtu 연동한다.
             }
+            if (targetchannels[fi].active == 1) {
+              // active 상태일때만 반복시킴
+              switch (targetchannels[fi].function_code) {
+                case 0: //Read Coils
+                  func = rtu_clients[i][slave_id].readCoils(
+                    targetchannels[fi].start_address,
+                    targetchannels[fi].quantity
+                  )
+                  break
+                case 1: //Read Discrete Input
+                  func = rtu_clients[i][slave_id].readDiscreteInputs(
+                    targetchannels[fi].start_address,
+                    targetchannels[fi].quantity
+                  )
+                  break
+                case 3: //Read Holding Registers
+                  func = rtu_clients[i][slave_id].readHoldingRegisters(
+                    targetchannels[fi].start_address,
+                    targetchannels[fi].quantity
+                  )
+                  break
+                case 4: //Read Input Registers
+                  func = rtu_clients[i][slave_id].readInputRegisters(
+                    targetchannels[fi].start_address,
+                    targetchannels[fi].quantity
+                  )
+                  break
+              }
+            }
+            DBH.channel_inc('tx', targetchannels[fi].id)
+            await func
+              .then(function (resp) {
+                response_process(targetchannels[fi], resp)
+              })
+              .catch(function () {
+                DBH.channel_inc('err', targetchannels[fi].id)
+                console.log('socket network error')
+                console.log(Networks[i].address)
+                console.error(arguments)
+              })
           }
-          DBH.channel_inc('tx', targetchannels[fi].id)
-          try {
-            let res = await func
-            console.log(res.response._body.valuesAsArray)
-            response_process(targetchannels[fi], res)
-          } catch (err) {
-            DBH.channel_inc('err', targetchannels[fi].id)
-            console.log('socket network error')
-            console.log(Networks[i].address)
-            console.error(arguments)
-          }
-        }
+        }, Networks[i].period)
       })
     }
   }
@@ -329,10 +312,4 @@ async function response_process(targetchannels_fi, resp) {
       )
     }
   }
-}
-
-const sleep = (ms) => {
-  return new Promise((resolve) => {
-    setTimeout(resolve, ms)
-  })
 }

@@ -5,11 +5,14 @@ const SerialPort = require('serialport')
 const net = require('net')
 let Excel = require('./get_excel.js')
 const { type } = require('os')
+const { select_not_null } = require('./database.js')
 const sockets = []
 const options = []
 const clients = []
 const rtu_clients = []
 const tcp_clients = []
+
+let count = 0
 
 let Networks
 let channel_range = {}
@@ -52,7 +55,7 @@ async function modbusStart() {
         timeout: Networks[i].wait_time,
       }
       let device_list = []
-      let targetchannels = await DBH.get_targetChannels(Networks[i].id)
+      let targetchannels = await DBH.get_targetChannels(Networks[i].id) // device id별 채널 가져온다.
       for (let fi = 0; fi < targetchannels.length; fi++) {
         let slave_id = targetchannels[fi].device_address
         if (device_list[slave_id] == undefined) {
@@ -61,18 +64,27 @@ async function modbusStart() {
           device_list[slave_id].push(fi)
         }
       }
+      console.log('devicelist :', device_list)
 
-      sockets[i].connect(options[i]) // 실제로 포트를 열어준다.
       for (let di = 0; di < device_list.length; di++) {
         if (device_list[di] != undefined) {
+          console.log('di:', di)
           tcp_clients[i][di] = new Modbus.client.TCP(sockets[i], di) // tcp를 열어준다.
+        }
+      }
+      sockets[i].connect(options[i]) // 실제로 포트를 열어준다.
+      sockets[i].on('connect', async function () {
+        console.log('connect!!:', options[i])
+        //소켓이 연결되는 경우 어떻게 사용할 건지
+        for (let di = 0; di < device_list.length; di++) {
+          if (device_list[di] != undefined) {
+            console.log('device_list[di]:', device_list[di])
 
-          sockets[i].on('connect', async function () {
-            //소켓이 연결되는 경우 어떻게 사용할 건지
             for (let ci = 0; ci < device_list[di].length; ci++) {
               console.log(device_list[di][ci])
               let fi = device_list[di][ci]
               let slave_id = targetchannels[fi].device_address
+
               //frame의 개수만큼 반복하는 코드
               if (targetchannels[fi].active == 1) {
                 let func
@@ -106,25 +118,31 @@ async function modbusStart() {
                 DBH.channel_inc('tx', targetchannels[fi].id)
                 try {
                   let res = await func
+                  count += 1
+                  console.log('count:', count)
+                  console.log('res:', res.response._body.valuesAsArray)
                   response_process(targetchannels[fi], res)
-                  await sleep(200)
+                  await sleep(Networks[i].period)
                 } catch (err) {
                   DBH.channel_inc('err', targetchannels[fi].id)
                   console.log('socket network error')
+                  console.log('err:', err)
                   console.log(Networks[i].address)
                   console.error(arguments)
                 }
               }
             }
-            sockets[i].end()
-          }) //on
+          }
         }
-      }
-      sockets[i].on('error', function () {
+        sockets[i].end()
+      }) //on
+      sockets[i].on('error', function (err) {
         //에러가 발생하면 어떻게 할건지
         console.log('errored !!!!!!', Networks[i].address)
+        console.log('err:', err)
       })
       sockets[i].on('close', function () {
+        console.log('closed!!!')
         sockets[i].connect(options[i]) // 실제로 포트를 열어준다.
       })
     } else if (Networks[i].network_type == 'rtu') {
@@ -135,59 +153,57 @@ async function modbusStart() {
       rtu_clients[i] = []
       sockets[i].on('open', async function () {
         let targetchannels = await DBH.get_targetChannels(Networks[i].id) // ip의 id에 해당하는 데이터들을 가져온다.
-        setInterval(async () => {
-          for (let fi = 0; fi < targetchannels.length; fi++) {
-            // socket과 slave_id를 통해 clients를 열어준다.
-            // device_id를 뽑아서 확인한다.
-            let slave_id = targetchannels[fi].device_address
-            if (rtu_clients[i][slave_id] == undefined) {
-              rtu_clients[i][slave_id] = new Modbus.client.RTU(
-                sockets[i],
-                slave_id
-              ) // 선언해서 device_id로 rtu 연동한다.
-            }
-            if (targetchannels[fi].active == 1) {
-              // active 상태일때만 반복시킴
-              switch (targetchannels[fi].function_code) {
-                case 0: //Read Coils
-                  func = rtu_clients[i][slave_id].readCoils(
-                    targetchannels[fi].start_address,
-                    targetchannels[fi].quantity
-                  )
-                  break
-                case 1: //Read Discrete Input
-                  func = rtu_clients[i][slave_id].readDiscreteInputs(
-                    targetchannels[fi].start_address,
-                    targetchannels[fi].quantity
-                  )
-                  break
-                case 3: //Read Holding Registers
-                  func = rtu_clients[i][slave_id].readHoldingRegisters(
-                    targetchannels[fi].start_address,
-                    targetchannels[fi].quantity
-                  )
-                  break
-                case 4: //Read Input Registers
-                  func = rtu_clients[i][slave_id].readInputRegisters(
-                    targetchannels[fi].start_address,
-                    targetchannels[fi].quantity
-                  )
-                  break
-              }
-            }
-            DBH.channel_inc('tx', targetchannels[fi].id)
-            await func
-              .then(function (resp) {
-                response_process(targetchannels[fi], resp)
-              })
-              .catch(function () {
-                DBH.channel_inc('err', targetchannels[fi].id)
-                console.log('socket network error')
-                console.log(Networks[i].address)
-                console.error(arguments)
-              })
+        for (let fi = 0; fi < targetchannels.length; fi++) {
+          // socket과 slave_id를 통해 clients를 열어준다.
+          // device_id를 뽑아서 확인한다.
+          let slave_id = targetchannels[fi].device_address
+          if (rtu_clients[i][slave_id] == undefined) {
+            rtu_clients[i][slave_id] = new Modbus.client.RTU(
+              sockets[i],
+              slave_id
+            ) // 선언해서 device_id로 rtu 연동한다.
           }
-        }, Networks[i].period)
+          if (targetchannels[fi].active == 1) {
+            // active 상태일때만 반복시킴
+            switch (targetchannels[fi].function_code) {
+              case 0: //Read Coils
+                func = rtu_clients[i][slave_id].readCoils(
+                  targetchannels[fi].start_address,
+                  targetchannels[fi].quantity
+                )
+                break
+              case 1: //Read Discrete Input
+                func = rtu_clients[i][slave_id].readDiscreteInputs(
+                  targetchannels[fi].start_address,
+                  targetchannels[fi].quantity
+                )
+                break
+              case 3: //Read Holding Registers
+                func = rtu_clients[i][slave_id].readHoldingRegisters(
+                  targetchannels[fi].start_address,
+                  targetchannels[fi].quantity
+                )
+                break
+              case 4: //Read Input Registers
+                func = rtu_clients[i][slave_id].readInputRegisters(
+                  targetchannels[fi].start_address,
+                  targetchannels[fi].quantity
+                )
+                break
+            }
+          }
+          DBH.channel_inc('tx', targetchannels[fi].id)
+          try {
+            let res = await func
+            console.log(res.response._body.valuesAsArray)
+            response_process(targetchannels[fi], res)
+          } catch (err) {
+            DBH.channel_inc('err', targetchannels[fi].id)
+            console.log('socket network error')
+            console.log(Networks[i].address)
+            console.error(arguments)
+          }
+        }
       })
     }
   }

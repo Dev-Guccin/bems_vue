@@ -2,31 +2,37 @@
 
 const modbus = require('jsmodbus')
 const net = require('net')
-let socket = new net.Socket()
+const socket = new net.Socket()
 const options = {
-  host: '192.168.0.11',
+  host: '192.168.0.9',
   port: '502',
 }
-const client = new modbus.client.TCP(socket)
+console.log(typeof socket)
+const client = new modbus.client.TCP(socket) // 매번 새롭게 설정해야함.
 
 socket.on('connect', async function () {
-  const func = client.readHoldingRegisters(0, 5)
-  let res = await func
-  console.log(res.response._body.valuesAsArray)
-  await sleep(1000)
-
-  socket.end()
+  console.log('connect!!')
+  try {
+    await sleep(3000)
+    console.log('sleep end')
+    const func = client.readHoldingRegisters(0, 5)
+    let res = await func
+    console.log(res.response._body.valuesAsArray)
+    socket.end()
+  } catch (err) {
+    console.log(err)
+  }
 })
+
+const sleep = (ms) => {
+  return new Promise((resolve) => {
+    console.log('sleep!!!!')
+    setTimeout(resolve, ms)
+  })
+}
 
 socket.on('error', console.error)
 socket.on('close', function () {
   console.log('close1!!')
-  socket.connect(options)
 })
 socket.connect(options)
-
-const sleep = (ms) => {
-  return new Promise((resolve) => {
-    setTimeout(resolve, ms)
-  })
-}
