@@ -1,7 +1,7 @@
 'use strict'
 const DBH = require('./database.js')
 var Excel = require('./get_excel.js')
-const Excel = require('./Bacnet_output')
+const mainOutput = require('./Bacnet_output')
 
 const bacnet = require('node-bacnet')
 const config = require('../../config')
@@ -12,6 +12,7 @@ let checkArray = new Array()
 let checkTimeArray = new Array()
 
 main()
+mainOutput()
 
 client.on('iAm', (msg) => {
   console.log('iam : ', msg)

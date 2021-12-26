@@ -8,7 +8,7 @@ const bacnet = require('node-bacnet')
 //대상목록 보관할 배열(ctrl_list)생성(target객체가 들어갈 예정)
 let ctrl_list = []
 
-export default function mainOutput() {
+module.exports = function () {
   setInterval(() => {
     start()
   }, 20000)
