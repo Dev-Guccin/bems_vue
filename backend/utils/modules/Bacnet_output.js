@@ -9,7 +9,7 @@ const bacnet = require('node-bacnet')
 let ctrl_list = []
 setInterval(() => {
   start()
-}, 5000)
+}, 20000)
 async function start() {
   await get_info()
   bacnet_output()
@@ -29,6 +29,8 @@ function get_info() {
 
       let detail = await DBH.get_bacnet_staion(tmp.network_id) //접근할 station의 정보 가져온다.
       tmp.device_id = detail['device_id']
+      tmp.net = detail['net']
+      tmp.mac = detail['mac']
       tmp.object = detail['object']
       tmp.object_type = detail['object_type']
       tmp.object_instance = detail['object_instance']
@@ -59,34 +61,103 @@ function get_info() {
 
 //bacnet_output함수 생성
 function bacnet_output() {
-  console.log('bacnet_output 시작')
+  console.log('bacnet_output 시작 : ', ctrl_list)
   for (let i = 0; i < ctrl_list.length; i++) {
     let target = ctrl_list[i]
+    console.log('num: ', i)
     console.log('target: ', target)
+
+    let ip_address =
+      `${target.ip}` + (target.port == 47808 ? '' : ':' + target.port)
 
     let client = new bacnet({
       //백넷 데이터를 보내줄 서버(로컬)
       apduTimeout: target.period,
     })
+    if (target.mac != undefined) {
+      const makeMac = (macString) => {
+        let macArray = macString.split(/[.|:]/)
+        const port = Number(macArray.pop())
+
+        const hexString = port.toString(16) //decimal to hex
+        const _hexString = hexString.padStart(4, '0')
+        macArray.push(_hexString.slice(0, 2))
+        macArray.push(_hexString.slice(2, 4))
+        macArray = macArray.map(function (numString) {
+          return parseInt(numString, 10)
+        })
+        //console.log(macArray)
+        return macArray
+      }
+      ip_address = {
+        address: ip_address,
+        net: target.net,
+        adr: makeMac(target.mac),
+      }
+    }
+    console.log('ip_address:', ip_address)
+    console.log('present:', bacnet.enum.PropertyIdentifier.PRESENT_VALUE)
+    console.log('data:', {
+      type: target.value_type,
+      value: target.ctrl_value,
+    })
+    //let res = await sync_writePropertyMultiple(ip_address, target)
+    //console.log(res)
     // type에 따른 형태를 정해주어야한다.
     client.writeProperty(
-      target.ip,
+      ip_address,
       { type: target.object_type, instance: target.object_instance },
-      85,
-      [{ type: bacnet.enum.ApplicationTag.REAL, value: target.ctrlvalue }],
+      bacnet.enum.PropertyIdentifier.PRESENT_VALUE,
+      [
+        {
+          type: target.value_type,
+          value: target.ctrl_value,
+        },
+      ],
       (err, value) => {
         if (err) {
           console.log(err)
         }
+        console.log(value)
         DBH.recover_realtime(
           target.id,
           target.object_name,
-          target.com_type,
-          target.com_id
+          target.network_type,
+          target.network_id
         )
-        client.close()
       }
     )
   }
   ctrl_list = []
+}
+function sync_writePropertyMultiple(ip_address, target) {
+  return new Promise((resolve, reject) => {
+    try {
+      client.writeProperty(
+        ip_address,
+        { type: target.object_type, instance: target.object_instance },
+        bacnet.enum.PropertyIdentifier.PRESENT_VALUE,
+        [
+          {
+            type: target.value_type,
+            value: target.ctrl_value,
+          },
+        ],
+        (err, value) => {
+          if (err) {
+            console.log(err)
+            resolve()
+          }
+          console.log(value)
+          DBH.recover_realtime(
+            target.id,
+            target.object_name,
+            target.network_type,
+            target.network_id
+          )
+          resolve(value)
+        }
+      )
+    } catch (err) {}
+  })
 }
