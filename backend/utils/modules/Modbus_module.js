@@ -143,6 +143,7 @@ async function modbusStart() {
       })
       sockets[i].on('close', function () {
         console.log('closed!!!')
+        DBH.check_max_limit()
         sockets[i].connect(options[i]) // 실제로 포트를 열어준다.
       })
     } else if (Networks[i].network_type == 'rtu') {

@@ -49,6 +49,25 @@ var Database = {
       )
     })
   },
+  check_max_limit: function () {//////////////////
+    return new Promise(function (resolve, reject) {
+      connection.query(
+        `SELECT tx FROM modbus_channel WHERE tx>=3000;`,
+        (error, rows, fields) => {
+          if (error) throw error
+          if (rows.length >= 1) {
+            connection.query(
+              `UPDATE modbus_channel SET tx = 0, rx = 0, err=0`,
+              (error, rows, fields) => {
+                if (error) throw error
+            }
+            )
+          }
+          resolve()
+        }
+      )
+    })
+  },
   realtime_upsert: function (id, object_name, resData, object_type) {
     connection.query(
       `insert into realtime_table (id, object_name, log_value , log_time ,object_type, network_type )
