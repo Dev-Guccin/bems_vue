@@ -1,7 +1,6 @@
 'use strict'
 const DBH = require('./database.js')
 var Excel = require('./get_excel.js')
-const mainOutput = require('./Bacnet_output')
 
 const bacnet = require('node-bacnet')
 const config = require('../../config')
@@ -12,13 +11,13 @@ let checkArray = new Array()
 let checkTimeArray = new Array()
 
 main()
-mainOutput()
 
 client.on('iAm', (msg) => {
   console.log('iam : ', msg)
   //데이터 받으면 DB에 넣어주기
   DBH.set_available(msg.header.sender.address)
 })
+
 client.on('whoIs', (msg) => {})
 
 async function main() {

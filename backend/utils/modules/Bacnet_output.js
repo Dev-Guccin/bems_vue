@@ -1,5 +1,5 @@
 'use strict'
-//<output 가이드라인>
+
 //모듈 가져오기
 const DBH = require('./database.js')
 
@@ -7,9 +7,12 @@ const bacnet = require('node-bacnet')
 
 //대상목록 보관할 배열(ctrl_list)생성(target객체가 들어갈 예정)
 let ctrl_list = []
-setInterval(() => {
-  start()
-}, 20000)
+
+module.exports = function () {
+  setInterval(() => {
+    start()
+  }, 20000)
+}
 async function start() {
   await get_info()
   bacnet_output()
