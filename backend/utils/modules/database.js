@@ -49,15 +49,17 @@ var Database = {
       )
     })
   },
-  check_max_limit: function () {//////////////////
+  check_max_limit: function () {
     return new Promise(function (resolve, reject) {
       connection.query(
-        `SELECT tx FROM modbus_channel WHERE tx>=3000;`,
+        `SELECT id FROM modbus_channel WHERE tx>=3000;`,
         (error, rows, fields) => {
           if (error) throw error
-          if (rows.length >= 1) {
+          console.log(rows)
+          for (let i=0 ; i < rows.length ; i++) {
+            console.log("rowid:",rows[i].id)
             connection.query(
-              `UPDATE modbus_channel SET tx = 0, rx = 0, err=0`,
+              `UPDATE modbus_channel SET tx = 0, rx = 0, err=0 where id=${rows[i].id}`,
               (error, rows, fields) => {
                 if (error) throw error
             }
