@@ -115,14 +115,14 @@ var Database = {
       )
     })
   },
-  recover_realtime: function (id, object_name, network_type, network_id) {
+  recover_realtime: function (target) {
     return new Promise(function (resolve, reject) {
       connection.query(
         `update realtime_table set ctrl_value=null where
-         id='${id}' and 
-         object_name = '${object_name}' and 
-         network_type = '${network_type}' and 
-         network_id = '${network_id}' 
+         id='${target.id}' and 
+         object_name = '${target.object_name}' and 
+         network_type = 'modbus' and 
+         network_id = '${target.network_id}' 
          `,
         (error, rows, fields) => {
           if (error) {
