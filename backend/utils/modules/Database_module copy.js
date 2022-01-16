@@ -1,15 +1,51 @@
 const ExcelJS = require("exceljs")
 var mysql = require("mysql")
-const { RejectReason } = require("node-bacnet/lib/enum")
 var pgsql = require("pg")
-const { connect } = require("pm2")
 
 const filePath = "./uploads/Database.xlsx"
 
-DATABASE = {}
+DATABASE = []
 CONNECT = {}
 ERROR = {}
 
+//Excel의 Database 긁어오기
+async function get_database_info() {
+  return new Promise(async (resolve, reject) => {
+    //비동기로 엑셀에서 데이터를 긁어온다.
+    console.log("[+] Get Excel Data : start")
+    const workbook = new ExcelJS.Workbook() // 엑셀의 객체
+    await workbook.xlsx.readFile(filePath)
+    const sheetData = []
+    const worksheet = workbook.worksheets[0]
+    const options = { includeEmpty: true }
+    await worksheet.eachRow(options, (row, rowNum) => {
+      sheetData[rowNum] = []
+      row.eachCell(options, (cell, cellNum) => {
+        sheetData[rowNum][cellNum] = { value: cell.value, style: cell.style }
+      })
+    })
+    //sheetData[0]은 비어있고, sheetData[1]은 컬럼들, sheetData[2]부터 데이터가 들어있다.
+    //컬럼들로 구조체만들 key를 받아오기
+    key = []
+    for (let i = 1; i < sheetData[1].length; i++) {
+      key.push(sheetData[1][i].value)
+    }
+    //DB정보를 전역변수에 담는다.
+    for (let i = 2; i < sheetData.length; i++) {
+      tmp = {}
+      for (let j = 1; j < sheetData[i].length; j++) {
+        tmp[key[j - 1]] = sheetData[i][j].value
+      }
+      if (tmp["DB_Id"] == "*") {
+        break
+      }
+      DATABASE.push(tmp) //데이터객체를  넣어준다.
+    }
+    //console.log(DATABASE)
+    console.log("[+] Get Excel Data : done")
+    resolve(true)
+  })
+}
 async function connect_mysql(config) {
   return new Promise((resolve, reject) => {
     var connection = mysql.createConnection(config) //연결안되면 어케 확인함?
@@ -126,7 +162,69 @@ function disconnect_all() {
   }
   console.log("[+] Successfully Connection Ended")
 }
-
+async function start_sending() {
+  //엑셀에 접근하여 한 행마다 비동기로 데이터를 주고 받게 만들어준다.
+  console.log("[+] Start Sending Data : start")
+  const workbook = new ExcelJS.Workbook() // 엑셀의 객체
+  await workbook.xlsx.readFile(filePath)
+  const sheetData = []
+  const worksheet = workbook.worksheets[1] //page 설정
+  const options = { includeEmpty: true }
+  await worksheet.eachRow(options, (row, rowNum) => {
+    sheetData[rowNum] = []
+    row.eachCell(options, (cell, cellNum) => {
+      sheetData[rowNum][cellNum] = { value: cell.value, style: cell.style }
+    })
+  })
+  //본격적인 전송시작
+  //비동기로 돌기때문에 순서에 구애받지 않고 데이터를 가져오고 전송한다.
+  console.log("[+] Start Sending data : working...")
+  //컬럼들로 구조체만들 key를 받아오기
+  key = []
+  for (let i = 1; i < sheetData[1].length; i++) {
+    key.push(sheetData[1][i].value)
+  }
+  //이걸 루프돌리면 된다.
+  for (let i = 2; i < sheetData.length; i++) {
+    // 데이터를 구조에 맞게 편집
+    tmp = {}
+    for (let j = 1; j < sheetData[i].length; j++) {
+      tmp[key[j - 1]] = sheetData[i][j].value
+    }
+    // M_DB_Id가 존재하는지 && S_DB_Id가 존재하는지
+    console.log(tmp)
+    if (
+      Object.keys(CONNECT).includes(tmp.M_DB_Id.toString()) &&
+      Object.keys(CONNECT).includes(tmp.S_DB_Id.toString())
+    ) {
+      console.log("both exist")
+    } else {
+      console.log("can't connect")
+      tmp.details = "S_DB_Id 혹은 R_DB_Id 가 연결되어 있지 않습니다."
+      ERROR[tmp.Id] = tmp
+      continue
+    }
+    console.log(tmp)
+    switch (tmp.Action) {
+      case "insert":
+        //select_insert(tmp);
+        break
+      case "insert_ecosian":
+        insert_ecosian(tmp)
+        break
+      case "update":
+        select_update(tmp)
+        break
+      case "update_ecosian":
+        select_update_ecosian(tmp)
+        break
+      default:
+        break
+    }
+    // SendDatabase에서 값을 긁어서 ReceiveDatabase에 수정해준다.(비동기)
+    // setInterval(() => {select_update(tmp)}, 2000);
+  }
+}
 function set_log_datatype(M_database, S_database, value) {
   var tmp
   switch (S_database.DB_LogType) {
@@ -255,6 +353,7 @@ async function select_insert(row) {
     ERROR[row.Id] = row
     return // 계산하지 않고 함수 종료시킨다
   }
+  console.log(row)
   //ObjectName의 형식이 int거나 char일수 있으므로 이에대한 필터링이 필요함
   sqlstring =
     `SELECT * from ${M_database.DB_TableName} ` +
@@ -378,62 +477,6 @@ async function insert_ecosian(row) {
       S_database,
       value
     )}, ${get_time_datatype(M_database, S_database, value)})`
-  CONNECT[row.S_DB_Id.toString()].query(sqlstring, (err, res) => {
-    if (err) {
-      console.log(err)
-      row.details =
-        "데이터가 UPDATE하는데 문제가 발생했습니다. 즉, S_Objectname을 확인해보세요."
-      ERROR[row.Id] = row
-    } else {
-    }
-  })
-}
-
-async function insert_ecosian2(M_database, S_database, row) {
-  //ObjectName의 형식이 int거나 char일수 있으므로 이에대한 필터링이 필요함
-  sqlstring =
-    `SELECT * from ${M_database.DB_TableName} ` +
-    `where ${M_database.DB_ObjectName}=${
-      M_database.DB_ObjectType == "char"
-        ? "'" + row.M_Objectname + "'"
-        : row.M_Objectname
-    };`
-  let value = await (async function () {
-    return new Promise((resolve, reject) => {
-      CONNECT[row.M_DB_Id.toString()].query(sqlstring, (err, res) => {
-        if (err) {
-          console.log(err)
-          row.details = "데이터를 SELECT하는데 오류가 있습니다."
-          ERROR[row.Id] = row
-          resolve()
-        } else {
-          //값이 비어있는 경우 있을 수 있음.
-          if (res.length == 0) {
-            row.details =
-              "SELECT한 데이터가 비어있습니다. 즉, M_Objectname을 확인해보세요."
-            ERROR[row.Id] = row
-            resolve()
-          }
-          resolve(res)
-        }
-      })
-    })
-  })()
-  if (value == undefined) {
-    return
-  }
-  // ##########################################################################################
-  // ##########################################################################################
-  // insert into 테이블명(site_cd, prmt_id, act_tm, val, regi_dttm) values(row.M_Site_Cd, M)
-  // ##########################################################################################
-  // ##########################################################################################
-  sqlstring =
-    `INSERT INTO ${S_database.DB_TableName}(site_cd, prmt_id, act_tm, val, regi_dttm) ` +
-    `values('${row.M_Site_Cd}', ${row.S_Objectname}, NOW() , ${get_log_datatype(
-      M_database,
-      S_database,
-      value
-    )}, ${get_time_datatype(M_database, S_database, value)})`
   console.log("test:", sqlstring)
   CONNECT[row.S_DB_Id.toString()].query(sqlstring, (err, res) => {
     if (err) {
@@ -445,7 +488,6 @@ async function insert_ecosian2(M_database, S_database, row) {
     }
   })
 }
-
 async function select_update(row) {
   //table명, object명, 등등을 받아서 query를 날려야함.
   var M_database
@@ -526,62 +568,7 @@ async function select_update(row) {
     }
   })
 }
-async function select_update2(M_database, S_database, row) {
-  //ObjectName의 형식이 int거나 char일수 있으므로 이에대한 필터링이 필요함
-  sqlstring =
-    `SELECT * from ${M_database.DB_TableName} ` +
-    `where ${M_database.DB_ObjectName}=${
-      M_database.DB_ObjectType == "char"
-        ? "'" + row.M_Objectname + "'"
-        : row.M_Objectname
-    };`
-  //
-  var value = await (async function () {
-    return new Promise((resolve, reject) => {
-      CONNECT[row.M_DB_Id.toString()].query(sqlstring, (err, res) => {
-        if (err) {
-          console.log(err)
-          row.details = "데이터를 SELECT하는데 오류가 있습니다."
-          ERROR[row.Id] = row
-          resolve()
-        } else {
-          console.log(res)
-          //값이 비어있는 경우 있을 수 있음.
-          if (res.length == 0) {
-            row.details =
-              "SELECT한 데이터가 비어있습니다. 즉, M_Objectname을 확인해보세요."
-            ERROR[row.Id] = row
-            resolve()
-          }
-          resolve(res)
-        }
-      })
-    })
-  })()
-  if (value == undefined) {
-    return
-  }
-  console.log(value)
-  sqlstring =
-    `UPDATE ${S_database.DB_TableName} ` +
-    `${set_log_datatype(M_database, S_database, value)}` +
-    `${set_control_datatype(M_database, S_database, value)}` +
-    `${set_time_datatype(M_database, S_database, value)}` +
-    ` WHERE ${S_database.DB_ObjectName}=${
-      S_database.DB_ObjectType == "char"
-        ? "'" + row.S_Objectname + "'"
-        : row.S_Objectname
-    };`
-  CONNECT[row.S_DB_Id.toString()].query(sqlstring, (err, res) => {
-    if (err) {
-      console.log(err)
-      row.details =
-        "데이터가 UPDATE하는데 문제가 발생했습니다. 즉, S_Objectname을 확인해보세요."
-      ERROR[row.Id] = row
-    } else {
-    }
-  })
-}
+
 async function select_update_ecosian(row) {
   //table명, object명, 등등을 받아서 query를 날려야함.
   var M_database
@@ -675,294 +662,21 @@ async function select_update_ecosian(row) {
     }
   })
 }
-async function select_update_ecosian2(M_database, S_database, row) {
-  //ObjectName의 형식이 int거나 char일수 있으므로 이에대한 필터링이 필요함
-  // 에코시안 서버에 연결하여 ctrl 데이터를 가져온다.
-  sqlstring =
-    `SELECT * from ${M_database.DB_TableName} ` +
-    `where site_cd='${row.M_Site_Cd}' and ${M_database.DB_ObjectName}=${
-      M_database.DB_ObjectType == "char"
-        ? "'" + row.M_Objectname + "'"
-        : row.M_Objectname
-    };`
-  var value = await (async function () {
-    return new Promise((resolve, reject) => {
-      CONNECT[row.M_DB_Id.toString()].query(sqlstring, (err, res) => {
-        if (err) {
-          console.log(err)
-          row.details = "[에코시안 관련] 데이터를 SELECT하는데 오류가 있습니다."
-          ERROR[row.Id] = row
-          resolve()
-        } else {
-          resolve(res)
-        }
-      })
-    })
-  })()
-  if (value == undefined || value.rowCount == 0 || value.rows[0].val == null) {
-    return
-  } else {
-    //데이터를 잘 가져왔다면 해당 열을 값을 val=null, regi_id=0, updt_id=0으로 갱신
-    sqlstring =
-      `UPDATE ${M_database.DB_TableName} SET ${M_database.DB_LogName}=null, regi_id=0, updt_id=0 ` +
-      `where site_cd='${row.M_Site_Cd}' and ${M_database.DB_ObjectName}=${
-        M_database.DB_ObjectType == "char"
-          ? "'" + row.M_Objectname + "'"
-          : row.M_Objectname
-      };`
-    CONNECT[row.M_DB_Id.toString()].query(sqlstring, (err, res) => {
-      if (err) {
-        console.log(err)
-        row.details =
-          "[에코시안 관련] 데이터를 ctrl,regi_id,updt_id를 갱신하는데에 실패했습니다.."
-        ERROR[row.Id] = row
-      } else {
-        console.log("[에코시안 관련] 데이터 갱신 완료")
-      }
-    })
-  }
-  console.log("VALUE:", S_database.DB_ControlName)
-  //ObjectName의 형식이 int거나 char일수 있으므로 이에대한 필터링이 필요함
-
-  //ctrl데이터만 갱신하면 된다.
-  sqlstring =
-    `UPDATE ${S_database.DB_TableName} SET ${S_database.DB_ControlName}=${value.rows[0].val}` +
-    ` WHERE ${S_database.DB_ObjectName}=${
-      S_database.DB_ObjectType == "char"
-        ? "'" + row.S_Objectname + "'"
-        : row.S_Objectname
-    };`
-  CONNECT[row.S_DB_Id.toString()].query(sqlstring, (err, res) => {
-    if (err) {
-      console.log(err)
-      row.details =
-        "데이터가 UPDATE하는데 문제가 발생했습니다. 즉, S_Objectname을 확인해보세요."
-      ERROR[row.Id] = row
-    } else {
-      console.log("데이터 갱신이 완료~")
-    }
-  })
-}
-
-let MATCHING = {}
-function initData() {
-  return new Promise(async (resolve, reject) => {
-    //엑셀에 접근하여 한 행마다 비동기로 데이터를 주고 받게 만들어준다.
-    console.log("[+] Start Sending Data : start")
-    const workbook = new ExcelJS.Workbook() // 엑셀의 객체
-    await workbook.xlsx.readFile(filePath)
-    const sheetData = []
-
-    const worksheet = workbook.worksheets[1] //page 설정 -> Matching을 선택
-    const options = { includeEmpty: true }
-    // await worksheet.eachRow(options, (row, rowNum) => {
-    //   sheetData[rowNum] = []
-
-    //   row.eachCell(options, (cell, cellNum) => {
-    //     sheetData[rowNum][cellNum] = { value: cell.value, style: cell.style }
-    //     console.log({ value: cell.value, style: cell.style })
-
-    //   })
-    // })
-    let key = []
-    await worksheet.eachRow(options, (row, rowNum) => {
-      if (rowNum == 1) {
-        // key 값을 가져온다.
-        row.eachCell(options, (cell, cellNum) => {
-          // 키 값의 열을 순회
-          key.push(cell.value)
-        })
-      } else {
-        tmp = {}
-        row.eachCell(options, (cell, cellNum) => {
-          tmp[key[cellNum - 1]] = cell.value
-        })
-        if (tmp.Id.toString().trim() == "*") {
-          return
-        }
-        if (MATCHING[[tmp.M_DB_Id, tmp.S_DB_Id]] == undefined) {
-          MATCHING[[tmp.M_DB_Id, tmp.S_DB_Id]] = []
-        }
-        MATCHING[[tmp.M_DB_Id, tmp.S_DB_Id]].push(tmp)
-      }
-    })
-    resolve()
-  })
-}
-function setDatabase(DATABASE) {
-  return new Promise(async (resolve, reject) => {
-    switch (DATABASE.DB_Type) {
-      case 0: //MS-SQL
-        console.log("This database is MS-SQL")
-        config = {
-          user: DATABASE.DB_Userid,
-          password: DATABASE.DB_Userpwd.toStrnig(),
-          database: DATABASE.DB_Name,
-          server: DATABASE.DB_Ip,
-        }
-        break
-      case 1: //My-SQL
-        console.log("This database is My-SQL")
-        config = {
-          host: DATABASE.DB_Ip,
-          port: DATABASE.DB_Port,
-          user: DATABASE.DB_Userid,
-          password: DATABASE.DB_Userpwd.toString(),
-          database: DATABASE.DB_Name,
-          connectTimeout: 5000,
-          dateStrings: "date",
-        }
-        check = await connect_mysql(config)
-        if (check) {
-          CONNECT[DATABASE.DB_Id] = check
-        }
-        break
-      case 2: //Maria mysql 과 동일함
-        console.log("This database is Maria")
-        config = {
-          host: DATABASE.DB_Ip,
-          port: DATABASE.DB_Port,
-          user: DATABASE.DB_Userid,
-          password: DATABASE.DB_Userpwd,
-          database: DATABASE.DB_Name,
-          connectTimeout: 5000,
-          dateStrings: "date",
-        }
-        check = await connect_mysql(config)
-        if (check) {
-          CONNECT[DATABASE.DB_Id] = check
-        }
-        break
-      case 3: //PostgreSQL
-        console.log("This database is postgreSQL")
-        //여기서 postgre접근한뒤 config 설정해준다.
-        config = {
-          host: DATABASE.DB_Ip,
-          port: DATABASE.DB_Port,
-          user: DATABASE.DB_Userid,
-          password: DATABASE.DB_Userpwd,
-          database: DATABASE.DB_Name,
-          dateStrings: "date", //이거 되는지 아직 모름
-        }
-        check = await connect_postgresql(config) //연결이 되면 connection을 반환한다.바로 접근가능해짐
-        if (check) {
-          CONNECT[DATABASE.DB_Id] = check
-        }
-        break
-      case 4: //Acces
-        console.log("This database is Acces")
-        //.mdb에 접근해서 무언가 해야함.
-        break
-      default:
-        console.log("[-] This is Wrong DataType, DB_Id is :", DATABASE[i].DB_Id)
-        break
-    }
-    resolve()
-  })
-}
-async function get_database_info() {
-  return new Promise(async (resolve, reject) => {
-    //비동기로 엑셀에서 데이터를 긁어온다.
-    console.log("[+] Get Excel Data : start")
-    const workbook = new ExcelJS.Workbook() // 엑셀의 객체
-    await workbook.xlsx.readFile(filePath)
-    const worksheet = workbook.worksheets[0]
-    const options = { includeEmpty: true }
-
-    let key = []
-    let flag = 0
-    await worksheet.eachRow(options, (row, rowNum) => {
-      if (flag != 0) {
-        return
-      }
-      if (rowNum == 1) {
-        // key 값을 가져온다.
-        row.eachCell(options, (cell, cellNum) => {
-          // 키 값의 열을 순회
-          key.push(cell.value)
-        })
-      } else {
-        tmp = {}
-        row.eachCell(options, (cell, cellNum) => {
-          tmp[key[cellNum - 1]] = cell.value
-        })
-        if (tmp.DB_Id.toString().trim() == "*") {
-          flag = 1
-          return
-        }
-        DATABASE[tmp.DB_Id] = tmp
-      }
-    })
-    resolve(true)
-  })
-}
-async function start_sending() {
-  return new Promise(async (resolve, reject) => {
-    // 통신 별로 루프를 돌린다.
-    for (const match in MATCHING) {
-      // 통신 연결
-      const [A, B] = match.split(",")
-      console.log(A, B)
-      console.log("DBDB[A]:", DATABASE[A])
-      // console.log("DBDB[B]:", DATABASE[B])
-      if (DATABASE[A] != undefined && DATABASE[B] != undefined) {
-        await setDatabase(DATABASE[A])
-        await setDatabase(DATABASE[B])
-      } else {
-        // console.log("something wrong")
-        continue
-      }
-      // 데이터 통신
-      dataProc = MATCHING[match]
-      // console.log(dataProc)
-      dataProc.forEach((element) => {
-        switch (element.Action) {
-          case "insert":
-            //select_insert(tmp);
-            break
-          case "insert_ecosian":
-            insert_ecosian2(DATABASE[A], DATABASE[B], element)
-            break
-          case "update":
-            select_update2(DATABASE[A], DATABASE[B], element)
-            break
-          case "update_ecosian":
-            select_update_ecosian2(DATABASE[A], DATABASE[B], element)
-            break
-          default:
-            break
-        }
-      })
-    }
-    resolve()
-  })
-}
-
-//main()
 async function main() {
   await get_database_info() //DB의 정보를 받는다.
-  await initData()
-  let count = 0
-  while (true) {
-    await start_sending()
-    // console.log("count:", count)
-    await sleep(5000)
-    count += 1
-
-    if (count == 10000) {
-      count = 0
-    }
-  }
+  //DB의 정보를 받았기 때문에 각 객체에 대해 sql 연결을 진행한다.
+  await set_database()
+  //Excel에서 다시 데이터를 하나씩 받으며 통신을 시작한다. (비동기로 진행한다)
+  intervaltime = 60000
+  setInterval(() => start_sending(), intervaltime)
+  //start_sending()
+  //통신이 종료되면 모든 CONNECT의 값들을 end시킨다.(아마 쓸일 거의 없을듯)
+  //disconnect_all();
 }
 main()
-const sleep = (ms) => {
-  return new Promise((resolve) => {
-    setTimeout(resolve, ms)
-  })
-}
 
 process.on("SIGINT", function () {
-  // console.log("[+] Caught ninterrupt sigal")
-  // console.log("[+] Error list:", ERROR)
+  console.log("[+] Caught ninterrupt sigal")
+  console.log("[+] Error list:", ERROR)
   process.exit()
 })
