@@ -10,14 +10,11 @@ const util = require('util')
 let checkArray = new Array()
 let checkTimeArray = new Array()
 
-main()
-
 client.on('iAm', (msg) => {
   console.log('iam : ', msg)
   //데이터 받으면 DB에 넣어주기
   DBH.set_available(msg.header.sender.address)
 })
-
 client.on('whoIs', (msg) => {})
 
 async function main() {
@@ -151,3 +148,4 @@ function sync_readPropertyMultiple(ip_address, requestArray, station) {
     }
   })
 }
+main()
