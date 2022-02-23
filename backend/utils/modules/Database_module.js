@@ -120,13 +120,6 @@ function set_database() {
     console.log("[+] Connect Database : done")
   })
 }
-function disconnect_all() {
-  keys = Object.keys(CONNECT)
-  for (let i = 0; i < keys.length; i++) {
-    CONNECT[keys[i]].end()
-  }
-  console.log("[+] Successfully Connection Ended")
-}
 
 function set_log_datatype(M_database, S_database, value) {
   var tmp
@@ -768,6 +761,7 @@ async function select_update_obix(M_database, S_database, row) {
     const parser = new XMLParser(options);
     const output = parser.parse(xmlDataStr);
     let _item = null;
+
     Object.keys(output.obj).forEach(keys => {
       if (Array.isArray(output.obj[keys])) {
         output.obj[keys].forEach(item => {
@@ -805,6 +799,7 @@ async function select_update_obix(M_database, S_database, row) {
     sqlstring = `insert into ${S_database.DB_TableName} (id, ${S_database.DB_ObjectName},  ${S_database.DB_LogName}, log_time, object_type, network_type) 
     values(2, '${row.M_Objectname}:${row.name}', ${_item['@_val']}, now(), '${_item['type'] == "bool" ? "BI" : "AI"}', 'modbus') as t 
     on duplicate key update log_value = t.log_value, log_time = t.log_time`
+
     CONNECT[row.S_DB_Id.toString()].query(sqlstring, (err, res) => {
       if (err) {
         console.log(err)
@@ -866,6 +861,12 @@ function initData() {
       }
     })
     resolve(true)
+  })
+}
+function endDatabase(DATABASE) {
+  return new Promise(async (resolve, reject) => {
+    await CONNECT[DATABASE.DB_Id].end()
+    resolve()
   })
 }
 function setDatabase(DATABASE) {
@@ -1014,6 +1015,8 @@ async function start_sending() {
             break
         }
       })
+      //await endDatabase(DATABASE[A])
+      //await endDatabase(DATABASE[B])
     }
     resolve()
   })
@@ -1027,7 +1030,7 @@ async function main() {
   while (true) {
     await start_sending()
     // console.log("count:", count)
-    await sleep(5000)
+    await sleep(60000)
     count += 1
 
     if (count == 10000) {

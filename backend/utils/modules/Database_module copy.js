@@ -357,10 +357,9 @@ async function select_insert(row) {
   //ObjectName의 형식이 int거나 char일수 있으므로 이에대한 필터링이 필요함
   sqlstring =
     `SELECT * from ${M_database.DB_TableName} ` +
-    `where ${M_database.DB_ObjectName}=${
-      M_database.DB_ObjectType == "char"
-        ? "'" + row.M_Objectname + "'"
-        : row.M_Objectname
+    `where ${M_database.DB_ObjectName}=${M_database.DB_ObjectType == "char"
+      ? "'" + row.M_Objectname + "'"
+      : row.M_Objectname
     };`
   //
   var value = await (async function () {
@@ -394,10 +393,9 @@ async function select_insert(row) {
     `${set_log_datatype(M_database, S_database, value)}` +
     `${set_control_datatype(M_database, S_database, value)}` +
     `${set_time_datatype(M_database, S_database, value)}` +
-    ` WHERE ${S_database.DB_ObjectName}=${
-      S_database.DB_ObjectType == "char"
-        ? "'" + row.S_Objectname + "'"
-        : row.S_Objectname
+    ` WHERE ${S_database.DB_ObjectName}=${S_database.DB_ObjectType == "char"
+      ? "'" + row.S_Objectname + "'"
+      : row.S_Objectname
     };`
   CONNECT[row.S_DB_Id.toString()].query(sqlstring, (err, res) => {
     if (err) {
@@ -435,10 +433,9 @@ async function insert_ecosian(row) {
   //ObjectName의 형식이 int거나 char일수 있으므로 이에대한 필터링이 필요함
   sqlstring =
     `SELECT * from ${M_database.DB_TableName} ` +
-    `where ${M_database.DB_ObjectName}=${
-      M_database.DB_ObjectType == "char"
-        ? "'" + row.M_Objectname + "'"
-        : row.M_Objectname
+    `where ${M_database.DB_ObjectName}=${M_database.DB_ObjectType == "char"
+      ? "'" + row.M_Objectname + "'"
+      : row.M_Objectname
     };`
   let value = await (async function () {
     return new Promise((resolve, reject) => {
@@ -516,10 +513,9 @@ async function select_update(row) {
   //ObjectName의 형식이 int거나 char일수 있으므로 이에대한 필터링이 필요함
   sqlstring =
     `SELECT * from ${M_database.DB_TableName} ` +
-    `where ${M_database.DB_ObjectName}=${
-      M_database.DB_ObjectType == "char"
-        ? "'" + row.M_Objectname + "'"
-        : row.M_Objectname
+    `where ${M_database.DB_ObjectName}=${M_database.DB_ObjectType == "char"
+      ? "'" + row.M_Objectname + "'"
+      : row.M_Objectname
     };`
   //
   var value = await (async function () {
@@ -553,10 +549,9 @@ async function select_update(row) {
     `${set_log_datatype(M_database, S_database, value)}` +
     `${set_control_datatype(M_database, S_database, value)}` +
     `${set_time_datatype(M_database, S_database, value)}` +
-    ` WHERE ${S_database.DB_ObjectName}=${
-      S_database.DB_ObjectType == "char"
-        ? "'" + row.S_Objectname + "'"
-        : row.S_Objectname
+    ` WHERE ${S_database.DB_ObjectName}=${S_database.DB_ObjectType == "char"
+      ? "'" + row.S_Objectname + "'"
+      : row.S_Objectname
     };`
   CONNECT[row.S_DB_Id.toString()].query(sqlstring, (err, res) => {
     if (err) {
@@ -599,10 +594,9 @@ async function select_update_ecosian(row) {
   // 에코시안 서버에 연결하여 ctrl 데이터를 가져온다.
   sqlstring =
     `SELECT * from ${M_database.DB_TableName} ` +
-    `where site_cd='${row.M_Site_Cd}' and ${M_database.DB_ObjectName}=${
-      M_database.DB_ObjectType == "char"
-        ? "'" + row.M_Objectname + "'"
-        : row.M_Objectname
+    `where site_cd='${row.M_Site_Cd}' and ${M_database.DB_ObjectName}=${M_database.DB_ObjectType == "char"
+      ? "'" + row.M_Objectname + "'"
+      : row.M_Objectname
     };`
   var value = await (async function () {
     return new Promise((resolve, reject) => {
@@ -624,10 +618,9 @@ async function select_update_ecosian(row) {
     //데이터를 잘 가져왔다면 해당 열을 값을 val=null, regi_id=0, updt_id=0으로 갱신
     sqlstring =
       `UPDATE ${M_database.DB_TableName} SET ${M_database.DB_LogName}=null, regi_id=0, updt_id=0 ` +
-      `where site_cd='${row.M_Site_Cd}' and ${M_database.DB_ObjectName}=${
-        M_database.DB_ObjectType == "char"
-          ? "'" + row.M_Objectname + "'"
-          : row.M_Objectname
+      `where site_cd='${row.M_Site_Cd}' and ${M_database.DB_ObjectName}=${M_database.DB_ObjectType == "char"
+        ? "'" + row.M_Objectname + "'"
+        : row.M_Objectname
       };`
     CONNECT[row.M_DB_Id.toString()].query(sqlstring, (err, res) => {
       if (err) {
@@ -646,10 +639,9 @@ async function select_update_ecosian(row) {
   //ctrl데이터만 갱신하면 된다.
   sqlstring =
     `UPDATE ${S_database.DB_TableName} SET ${S_database.DB_ControlName}=${value.rows[0].val}` +
-    ` WHERE ${S_database.DB_ObjectName}=${
-      S_database.DB_ObjectType == "char"
-        ? "'" + row.S_Objectname + "'"
-        : row.S_Objectname
+    ` WHERE ${S_database.DB_ObjectName}=${S_database.DB_ObjectType == "char"
+      ? "'" + row.S_Objectname + "'"
+      : row.S_Objectname
     };`
   CONNECT[row.S_DB_Id.toString()].query(sqlstring, (err, res) => {
     if (err) {
