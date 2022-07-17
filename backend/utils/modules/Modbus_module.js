@@ -360,6 +360,7 @@ function get_info(){
             tmp.network_id = row['network_id']
             tmp.ctrl_value = row['ctrl_value']
             tmp.object_name = row["object_name"]
+            tmp.network_type = 'modbus'
             ctrl_list.push(tmp)
         }
         console.log('get_info완료')
