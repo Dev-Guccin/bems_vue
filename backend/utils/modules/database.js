@@ -121,7 +121,7 @@ var Database = {
         `update realtime_table set ctrl_value=null where
          id='${target.id}' and 
          object_name = '${target.object_name}' and 
-         network_type = 'modbus' and 
+         network_type = '${target.network_type}' and 
          network_id = '${target.network_id}' 
          `,
         (error, rows, fields) => {
