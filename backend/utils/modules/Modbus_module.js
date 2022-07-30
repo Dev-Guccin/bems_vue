@@ -303,7 +303,7 @@ async function response_process(targetchannels_fi, resp) {
           } else {
             //바이너리로 읽어오는 경우
             targetIdx = targetIdx / 2;
-            kloc = targetIdx % 8;
+            let kloc = targetIdx % 8;
             resData =
               (modbus_result.readUInt8(parseInt(targetIdx / 8)) >> kloc) % 2;
           }
@@ -316,6 +316,7 @@ async function response_process(targetchannels_fi, resp) {
     }
     if (resData != NaN) {
       //console.log("resData:", resData, "(id:", sensors[se].id, ")")
+
       DBH.realtime_upsert(
         sensors[se].id,
         sensors[se].object_name,
