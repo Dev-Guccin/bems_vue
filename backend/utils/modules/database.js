@@ -70,10 +70,10 @@ var Database = {
       );
     });
   },
-  realtime_upsert: function (id, object_name, resData, object_type) {
+  realtime_upsert: function (id, object_name, address, resData, object_type) {
     connection.query(
-      `insert into realtime_table (id, object_name, log_value , log_time ,object_type, network_type )
-        values (${id},'${object_name}', ${resData}, now(),'${object_type}','modbus') as t
+      `insert into realtime_table (id, object_name,address,  log_value , log_time ,object_type, network_type )
+        values (${id},'${object_name}',${address}, ${resData}, now(),'${object_type}','modbus') as t
         on duplicate key update log_value  = t.log_value , log_time  = t.log_time `,
       (error, rows, fields) => {
         if (error) throw error;

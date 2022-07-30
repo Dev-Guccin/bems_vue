@@ -319,6 +319,7 @@ async function response_process(targetchannels_fi, resp) {
       DBH.realtime_upsert(
         sensors[se].id,
         sensors[se].object_name,
+        sensors[se].address,
         sensors[se].m_r_scale * resData + sensors[se].m_r_offset,
         sensors[se].object_type
       );
