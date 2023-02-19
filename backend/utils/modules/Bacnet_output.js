@@ -122,12 +122,7 @@ function bacnet_output() {
           console.log(err)
         }
         console.log(value)
-        DBH.recover_realtime(
-          target.id,
-          target.object_name,
-          target.network_type,
-          target.network_id
-        )
+        DBH.recover_realtime(target)
       }
     )
   }

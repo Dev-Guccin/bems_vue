@@ -1,14 +1,14 @@
 let config = {
   dbconfig: {
-    host: 'localhost',
-    user: 'root',
-    password: '4msys', //db 패스워드
-    database: 'bems',
+    host: "localhost",
+    user: "root",
+    password: "4msys", //db 패스워드
+    database: "bems",
   },
   bacnetconfig: {
     port: 47808, //bacnet의 기본 주소
-    interface: '192.168.0.11', // 현재 서버의 로컬 ip
-    broadcastAddress: '192.168.0.255',
+    interface: "192.168.0.11", // 현재 서버의 로컬 ip
+    broadcastAddress: "192.168.0.255",
     apduTimeout: 10000,
   },
   module: {
@@ -17,6 +17,6 @@ let config = {
     database: 0,
     batch: 1,
   },
-}
+};
 
-module.exports = config
+module.exports = config;
