@@ -1,33 +1,44 @@
 const ExcelJS = require("exceljs")
-var mysql = require("mysql")
+let mysql = require("mysql")
 const { RejectReason } = require("node-bacnet/lib/enum")
-var pgsql = require("pg")
+let pgsql = require("pg")
 const { connect } = require("pm2")
 const { XMLParser } = require('fast-xml-parser');
+const { server } = require("jsmodbus")
 
 const filePath = "./uploads/Database.xlsx"
 
 let DATABASE = {}
+let MATCHING = {}
 let CONNECTION = {}
 let ERROR = {}
 
-async function connectMysql(config) {
+async function connectMysql(config, dbId) {
   return new Promise((resolve, reject) => {
-    var connection = mysql.createConnection(config)
 
+    let connection = mysql.createConnection(config)
+
+    // connect 는 한번만 실행된다.
     connection.connect(function (err) {
       if (err) {
-        console.error("[-] connection fail!! / host :", config.host, err)
+        console.error("CONNECT!!! connection fail!! / host :", config.host, config.port, dbId)
         resolve(connection)
       } else {
         resolve(connection)
       }
     })
+
+    connection.on('error', (err) => {
+      console.error("ERROR!!!", config.host, config.port, ' MySQL 연결이 끊어졌습니다.');
+      if (err.code === 'PROTOCOL_CONNECTION_LOST') {
+        console.error("PROTOCOL_CONNECTION_LOST");
+      }
+    });
   })
 }
 async function connectPostgresql(config) {
   return new Promise((resolve, reject) => {
-    var connection = new pgsql.Client(config) //pg의 Clinet객체를 이용하여 초기화
+    let connection = new pgsql.Client(config) //pg의 Clinet객체를 이용하여 초기화
     connection.connect(function (err) {
       if (err) {
         console.error("[-] connection fail!! / host :", config.host, err)
@@ -40,7 +51,7 @@ async function connectPostgresql(config) {
 }
 
 function set_log_datatype(M_database, S_database, value) {
-  var tmp
+  let tmp
   switch (S_database.DB_LogType) {
     case "int":
       tmp = parseFloat(value[0][M_database.DB_LogName])
@@ -63,7 +74,7 @@ function set_control_datatype(M_database, S_database, value) {
     M_database.DB_ControlType != undefined
   ) {
     //둘다 컨트롤 값을 가지는 경우만 반환
-    var tmp
+    let tmp
     switch (S_database.DB_ControlType) {
       case "int":
         tmp = parseInt(value[0][M_database.DB_ControlName])
@@ -91,7 +102,7 @@ function set_time_datatype(M_database, S_database, value) {
   ) {
     //둘다 타임값을 가지는 경우만 반환
     //데이터 형식에 맞춰주어야 한다.
-    var tmp
+    let tmp
     switch (S_database.DB_TimeType) {
       case "datetime":
         tmp = "'" + value[0][M_database.DB_TimeName] + "'"
@@ -106,7 +117,7 @@ function set_time_datatype(M_database, S_database, value) {
   }
 }
 function get_log_datatype(M_database, S_database, value) {
-  var tmp
+  let tmp
   switch (S_database.DB_LogType) {
     case "int":
       tmp = parseFloat(value[0][M_database.DB_LogName])
@@ -129,7 +140,7 @@ function get_time_datatype(M_database, S_database, value) {
   ) {
     //둘다 타임값을 가지는 경우만 반환
     //데이터 형식에 맞춰주어야 한다.
-    var tmp
+    let tmp
     switch (S_database.DB_TimeType) {
       case "datetime":
         tmp = "'" + value[0][M_database.DB_TimeName] + "'"
@@ -145,8 +156,8 @@ function get_time_datatype(M_database, S_database, value) {
 }
 async function select_insert(row) {
   //table명, object명, 등등을 받아서 query를 날려야함.
-  var M_database
-  var S_database
+  let M_database
+  let S_database
   for (let i = 0; i < DATABASE.length; i++) {
     if (DATABASE[i].DB_Id == row.M_DB_Id) {
       M_database = DATABASE[i]
@@ -175,7 +186,7 @@ async function select_insert(row) {
       : row.M_Objectname
     };`
   //
-  var value = await (async function () {
+  let value = await (async function () {
     return new Promise((resolve, reject) => {
       CONNECTION[row.M_DB_Id.toString()].query(sqlstring, (err, res) => {
         if (err) {
@@ -221,8 +232,8 @@ async function select_insert(row) {
   })
 }
 async function insert_ecosian(row) {
-  var M_database
-  var S_database
+  let M_database
+  let S_database
   for (let i = 0; i < DATABASE.length; i++) {
     if (DATABASE[i].DB_Id == row.M_DB_Id) {
       M_database = DATABASE[i]
@@ -356,8 +367,8 @@ async function insert_ecosian2(M_database, S_database, row) {
 
 async function select_update(row) {
   //table명, object명, 등등을 받아서 query를 날려야함.
-  var M_database
-  var S_database
+  let M_database
+  let S_database
   for (let i = 0; i < DATABASE.length; i++) {
     if (DATABASE[i].DB_Id == row.M_DB_Id) {
       M_database = DATABASE[i]
@@ -387,7 +398,7 @@ async function select_update(row) {
       : row.M_Objectname
     };`
   //
-  var value = await (async function () {
+  let value = await (async function () {
     return new Promise((resolve, reject) => {
       CONNECTION[row.M_DB_Id.toString()].query(sqlstring, (err, res) => {
         if (err) {
@@ -441,7 +452,7 @@ async function select_update2(M_database, S_database, row) {
       : row.M_Objectname
     };`
   //
-  var value = await (async function () {
+  let value = await (async function () {
     return new Promise((resolve, reject) => {
       CONNECTION[row.M_DB_Id.toString()].query(sqlstring, (err, res) => {
         if (err) {
@@ -488,8 +499,8 @@ async function select_update2(M_database, S_database, row) {
 }
 async function select_update_ecosian(row) {
   //table명, object명, 등등을 받아서 query를 날려야함.
-  var M_database
-  var S_database
+  let M_database
+  let S_database
   for (let i = 0; i < DATABASE.length; i++) {
     if (DATABASE[i].DB_Id == row.M_DB_Id) {
       M_database = DATABASE[i]
@@ -520,7 +531,7 @@ async function select_update_ecosian(row) {
       ? "'" + row.M_Objectname + "'"
       : row.M_Objectname
     };`
-  var value = await (async function () {
+  let value = await (async function () {
     return new Promise((resolve, reject) => {
       CONNECTION[row.M_DB_Id.toString()].query(sqlstring, (err, res) => {
         if (err) {
@@ -585,7 +596,7 @@ async function select_update_ecosian2(M_database, S_database, row) {
       ? "'" + row.M_Objectname + "'"
       : row.M_Objectname
     };`
-  var value = await (async function () {
+  let value = await (async function () {
     return new Promise((resolve, reject) => {
       CONNECTION[row.M_DB_Id.toString()].query(sqlstring, (err, res) => {
         if (err) {
@@ -651,7 +662,7 @@ async function select_update_obix(M_database, S_database, row) {
       ? "'" + row.M_Objectname + "'"
       : row.M_Objectname
     } order by ttime desc limit 1;`
-  var value = await (async function () {
+  let value = await (async function () {
     return new Promise((resolve, reject) => {
       CONNECTION[row.M_DB_Id.toString()].query(sqlstring, (err, res) => {
         if (err) {
@@ -731,7 +742,6 @@ async function select_update_obix(M_database, S_database, row) {
   }
 }
 
-let MATCHING = {}
 function getMatchingDataFromExcel() {
   return new Promise(async (resolve, reject) => {
     //엑셀에 접근하여 한 행마다 비동기로 데이터를 주고 받게 만들어준다.
@@ -809,7 +819,7 @@ function connectDatabase(database) {
           connectTimeout: 5000,
           dateStrings: "date",
         }
-        connection = await connectMysql(config)
+        connection = await connectMysql(config, database.DB_Id)
         CONNECTION[database.DB_Id] = connection
         break
       case 2: //Maria mysql 과 동일함
@@ -822,7 +832,7 @@ function connectDatabase(database) {
           connectTimeout: 5000,
           dateStrings: "date",
         }
-        connection = await connectMysql(config)
+        connection = await connectMysql(config, database.DB_Id)
         CONNECTION[database.DB_Id] = connection
         break
       case 3: //PostgreSQL
@@ -885,20 +895,30 @@ async function getDatabaseDataFromExcel() {
     resolve(true)
   })
 }
-async function startSending() {
+async function connectAllDatabase() {
+  return new Promise(async (resolve, reject) => {
+    for (const dbId in DATABASE) {
+      const database = DATABASE[dbId];
+      await connectDatabase(database)
+    }
+    resolve()
+  })
+}
+async function sendByMatching() {
   return new Promise(async (resolve, reject) => {
     // 통신 별로 루프를 돌린다.
     for (const match in MATCHING) {
       // 통신 연결
-      const [master, server] = match.split(",")
-      console.log("start_sending:", DATABASE[master])
-      if (DATABASE[master] != undefined && DATABASE[server] != undefined) {
-        await connectDatabase(DATABASE[master])
-        await connectDatabase(DATABASE[server])
-      } else {
-        // console.log("something wrong")
+      const [masterDbId, serverDbId] = match.split(",")
+      console.log("start_sending:", DATABASE[masterDbId])
+
+      if (CONNECTION[masterDbId] && CONNECTION[masterDbId].state === 'disconnected') {
         continue
       }
+      if (CONNECTION[serverDbId] && CONNECTION[serverDbId].state === 'disconnected') {
+        continue
+      }
+
       // 데이터 통신
       dataProc = MATCHING[match]
       // console.log(dataProc)
@@ -908,36 +928,36 @@ async function startSending() {
             //select_insert(tmp);
             break
           case "insert_ecosian":
-            insert_ecosian2(DATABASE[master], DATABASE[server], element)
+            insert_ecosian2(DATABASE[masterDbId], DATABASE[serverDbId], element)
             break
           case "update":
-            select_update2(DATABASE[master], DATABASE[server], element)
+            select_update2(DATABASE[masterDbId], DATABASE[serverDbId], element)
             break
           case "update_ecosian":
-            select_update_ecosian2(DATABASE[master], DATABASE[server], element)
+            select_update_ecosian2(DATABASE[masterDbId], DATABASE[serverDbId], element)
             break
           case "update_ecosian_obix":
-            select_update_obix(DATABASE[master], DATABASE[server], element)
+            select_update_obix(DATABASE[masterDbId], DATABASE[serverDbId], element)
             break
           default:
             break
         }
       })
-      //await endDatabase(DATABASE[A])
-      //await endDatabase(DATABASE[B])
     }
     resolve()
   })
 }
 
-//main()
 async function main() {
   await getDatabaseDataFromExcel() //DB의 정보를 받는다.
   await getMatchingDataFromExcel()
+  await connectAllDatabase()
+
+  // TODO : Matching 과 Database 사이에 정합성 문제가 없는지 확인해봐야한다.
+
   let count = 0
   while (true) {
-    await startSending()
-    // console.log("count:", count)
+    await sendByMatching()
     await sleep(60000)
     count += 1
 
@@ -948,25 +968,26 @@ async function main() {
 }
 main()
 
-function reConnectDatabse() {
-  for (const database in DATABASE) {
-    if (database.DB_Type === '1') {
-      if (CONNECTION[database.DB_Id] && CONNECTION[database.DB_Id].state === 'disconnected') {
-        console.error(database.Details, "이 연결되어 있지 않아 재연결하겠습니다.");
-        connectDatabase(database)
+async function reConnectDatabse() {
+  for (const dbId in DATABASE) {
+    const database = DATABASE[dbId];
+    if (database.DB_Type === 1) {
+      if (CONNECTION[dbId] && CONNECTION[dbId].state === 'disconnected') {
+        console.error(database.Details, "이 연결되어 있지 않아 재연결 시도합니다.");
+        await connectDatabase(database)
       }
     }
-    else if (database.DB_Type === '3') {
-      CONNECTION[database.DB_Id].query('SELECT 1', (err, result) => {
+    else if (database.DB_Type === 3) {
+      CONNECTION[dbId].query('SELECT 1', async (err, result) => {
         if (err) {
-          console.error('PostgreSQL 연결이 끊어졌습니다. 재연결 시도 중...');
-          connectDatabase(database);
+          console.error(database.Details, "이 연결되어 있지 않아 재연결 시도합니다.");
+          await connectDatabase(database);
         }
       });
     }
   }
 }
-setInterval(reConnectDatabse, 1000 * 60 * 10); // 10분 간격으로 데이터베이스 연결이 되었는지 확인한다.
+setInterval(reConnectDatabse, 1000 * 20); // 10분 간격으로 데이터베이스 연결이 되었는지 확인한다.
 
 
 const sleep = (ms) => {
