@@ -159,7 +159,6 @@ let Handler = {
           console.error(err)
           process.exit(2)
         }
-        Handler.delete_logfile(__dirname + `/log/${fileName}-out.log`)
         Handler.delete_logfile(__dirname + `/log/${fileName}-err.log`)
         pm2.start(
           {
@@ -169,7 +168,6 @@ let Handler = {
             //merge_logs: true,
             //combine_logs: true,
             env: {
-              pm_out_log_path: __dirname + `/log/${fileName}-out.log`,
               pm_err_log_path: __dirname + `/log/${fileName}-err.log`,
             },
           },
