@@ -987,7 +987,7 @@ async function reConnectDatabse() {
     }
   }
 }
-setInterval(reConnectDatabse, 1000 * 20); // 10분 간격으로 데이터베이스 연결이 되었는지 확인한다.
+setInterval(reConnectDatabse, 1000 * 60 * 10); // 10분 간격으로 데이터베이스 연결이 되었는지 확인한다.
 
 
 const sleep = (ms) => {
