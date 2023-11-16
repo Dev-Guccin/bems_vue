@@ -7,117 +7,35 @@ const { XMLParser } = require('fast-xml-parser');
 
 const filePath = "./uploads/Database.xlsx"
 
-DATABASE = {}
-CONNECT = {}
-ERROR = {}
+let DATABASE = {}
+let CONNECTION = {}
+let ERROR = {}
 
-async function connect_mysql(config) {
+async function connectMysql(config) {
   return new Promise((resolve, reject) => {
-    var connection = mysql.createConnection(config) //연결안되면 어케 확인함?
+    var connection = mysql.createConnection(config)
+
     connection.connect(function (err) {
       if (err) {
-        console.log("[-] connection fail!! / host :", config.host, err)
-        connection.end()
-        resolve(false)
+        console.error("[-] connection fail!! / host :", config.host, err)
+        resolve(connection)
       } else {
-        console.log("[+] connection success / host : ", config.host)
         resolve(connection)
       }
     })
   })
 }
-async function connect_postgresql(config) {
+async function connectPostgresql(config) {
   return new Promise((resolve, reject) => {
     var connection = new pgsql.Client(config) //pg의 Clinet객체를 이용하여 초기화
     connection.connect(function (err) {
       if (err) {
-        console.log("[-] connection fail!! / host :", config.host, err)
-        connection.end()
-        resolve(false)
+        console.error("[-] connection fail!! / host :", config.host, err)
+        resolve(connection)
       } else {
-        console.log("[+] connection success / host : ", config.host)
         resolve(connection)
       }
     })
-  })
-}
-function set_database() {
-  return new Promise(async (resolve, reject) => {
-    console.log("[+] Connect Database : start")
-    //DATABASE의 리스트에서 DB정보를 하나씩 꺼내와서 연결시켜놓는다.
-    for (let i = 0; i < DATABASE.length; i++) {
-      switch (DATABASE[i].DB_Type) {
-        case 0: //MS-SQL
-          console.log("This database is MS-SQL")
-          config = {
-            user: DATABASE[i].DB_Userid,
-            password: DATABASE[i].DB_Userpwd.toStrnig(),
-            database: DATABASE[i].DB_Name,
-            server: DATABASE[i].DB_Ip,
-          }
-          break
-        case 1: //My-SQL
-          console.log("This database is My-SQL")
-          config = {
-            host: DATABASE[i].DB_Ip,
-            port: DATABASE[i].DB_Port,
-            user: DATABASE[i].DB_Userid,
-            password: DATABASE[i].DB_Userpwd.toString(),
-            database: DATABASE[i].DB_Name,
-            connectTimeout: 5000,
-            dateStrings: "date",
-          }
-          check = await connect_mysql(config)
-          if (check) {
-            CONNECT[DATABASE[i].DB_Id] = check
-          }
-          break
-        case 2: //Maria mysql 과 동일함
-          console.log("This database is Maria")
-          config = {
-            host: DATABASE[i].DB_Ip,
-            port: DATABASE[i].DB_Port,
-            user: DATABASE[i].DB_Userid,
-            password: DATABASE[i].DB_Userpwd,
-            database: DATABASE[i].DB_Name,
-            connectTimeout: 5000,
-            dateStrings: "date",
-          }
-          check = await connect_mysql(config)
-          if (check) {
-            CONNECT[DATABASE[i].DB_Id] = check
-          }
-          break
-        case 3: //PostgreSQL
-          console.log("This database is postgreSQL")
-          //여기서 postgre접근한뒤 config 설정해준다.
-          config = {
-            host: DATABASE[i].DB_Ip,
-            port: DATABASE[i].DB_Port,
-            user: DATABASE[i].DB_Userid,
-            password: DATABASE[i].DB_Userpwd,
-            database: DATABASE[i].DB_Name,
-            dateStrings: "date", //이거 되는지 아직 모름
-          }
-          check = await connect_postgresql(config) //연결이 되면 connection을 반환한다.바로 접근가능해짐
-          if (check) {
-            CONNECT[DATABASE[i].DB_Id] = check
-          }
-          break
-        case 4: //Acces
-          console.log("This database is Acces")
-          //.mdb에 접근해서 무언가 해야함.
-          break
-        default:
-          console.log(
-            "[-] This is Wrong DataType, DB_Id is :",
-            DATABASE[i].DB_Id
-          )
-          break
-      }
-    }
-    resolve(true)
-    console.log("[+] Connect Database : done")
   })
 }
 
@@ -259,7 +177,7 @@ async function select_insert(row) {
   //
   var value = await (async function () {
     return new Promise((resolve, reject) => {
-      CONNECT[row.M_DB_Id.toString()].query(sqlstring, (err, res) => {
+      CONNECTION[row.M_DB_Id.toString()].query(sqlstring, (err, res) => {
         if (err) {
           console.log(err)
           row.details = "데이터를 SELECT하는데 오류가 있습니다."
@@ -292,7 +210,7 @@ async function select_insert(row) {
       ? "'" + row.S_Objectname + "'"
       : row.S_Objectname
     };`
-  CONNECT[row.S_DB_Id.toString()].query(sqlstring, (err, res) => {
+  CONNECTION[row.S_DB_Id.toString()].query(sqlstring, (err, res) => {
     if (err) {
       console.log(err)
       row.details =
@@ -334,7 +252,7 @@ async function insert_ecosian(row) {
     };`
   let value = await (async function () {
     return new Promise((resolve, reject) => {
-      CONNECT[row.M_DB_Id.toString()].query(sqlstring, (err, res) => {
+      CONNECTION[row.M_DB_Id.toString()].query(sqlstring, (err, res) => {
         if (err) {
           console.log(err)
           row.details = "데이터를 SELECT하는데 오류가 있습니다."
@@ -369,7 +287,7 @@ async function insert_ecosian(row) {
       S_database,
       value
     )}, ${get_time_datatype(M_database, S_database, value)})`
-  CONNECT[row.S_DB_Id.toString()].query(sqlstring, (err, res) => {
+  CONNECTION[row.S_DB_Id.toString()].query(sqlstring, (err, res) => {
     if (err) {
       console.log(err)
       row.details =
@@ -390,7 +308,7 @@ async function insert_ecosian2(M_database, S_database, row) {
     };`
   let value = await (async function () {
     return new Promise((resolve, reject) => {
-      CONNECT[row.M_DB_Id.toString()].query(sqlstring, (err, res) => {
+      CONNECTION[row.M_DB_Id.toString()].query(sqlstring, (err, res) => {
         if (err) {
           console.log(err)
           row.details = "데이터를 SELECT하는데 오류가 있습니다."
@@ -425,7 +343,7 @@ async function insert_ecosian2(M_database, S_database, row) {
       value
     )}, ${get_time_datatype(M_database, S_database, value)})`
   console.log("test:", sqlstring)
-  CONNECT[row.S_DB_Id.toString()].query(sqlstring, (err, res) => {
+  CONNECTION[row.S_DB_Id.toString()].query(sqlstring, (err, res) => {
     if (err) {
       console.log(err)
       row.details =
@@ -471,7 +389,7 @@ async function select_update(row) {
   //
   var value = await (async function () {
     return new Promise((resolve, reject) => {
-      CONNECT[row.M_DB_Id.toString()].query(sqlstring, (err, res) => {
+      CONNECTION[row.M_DB_Id.toString()].query(sqlstring, (err, res) => {
         if (err) {
           console.log(err)
           row.details = "데이터를 SELECT하는데 오류가 있습니다."
@@ -504,7 +422,7 @@ async function select_update(row) {
       ? "'" + row.S_Objectname + "'"
       : row.S_Objectname
     };`
-  CONNECT[row.S_DB_Id.toString()].query(sqlstring, (err, res) => {
+  CONNECTION[row.S_DB_Id.toString()].query(sqlstring, (err, res) => {
     if (err) {
       console.log(err)
       row.details =
@@ -525,7 +443,7 @@ async function select_update2(M_database, S_database, row) {
   //
   var value = await (async function () {
     return new Promise((resolve, reject) => {
-      CONNECT[row.M_DB_Id.toString()].query(sqlstring, (err, res) => {
+      CONNECTION[row.M_DB_Id.toString()].query(sqlstring, (err, res) => {
         if (err) {
           console.log(err)
           row.details = "데이터를 SELECT하는데 오류가 있습니다."
@@ -558,7 +476,7 @@ async function select_update2(M_database, S_database, row) {
       ? "'" + row.S_Objectname + "'"
       : row.S_Objectname
     };`
-  CONNECT[row.S_DB_Id.toString()].query(sqlstring, (err, res) => {
+  CONNECTION[row.S_DB_Id.toString()].query(sqlstring, (err, res) => {
     if (err) {
       console.log(err)
       row.details =
@@ -604,7 +522,7 @@ async function select_update_ecosian(row) {
     };`
   var value = await (async function () {
     return new Promise((resolve, reject) => {
-      CONNECT[row.M_DB_Id.toString()].query(sqlstring, (err, res) => {
+      CONNECTION[row.M_DB_Id.toString()].query(sqlstring, (err, res) => {
         if (err) {
           console.log(err)
           row.details = "[에코시안 관련] 데이터를 SELECT하는데 오류가 있습니다."
@@ -626,7 +544,7 @@ async function select_update_ecosian(row) {
         ? "'" + row.M_Objectname + "'"
         : row.M_Objectname
       };`
-    CONNECT[row.M_DB_Id.toString()].query(sqlstring, (err, res) => {
+    CONNECTION[row.M_DB_Id.toString()].query(sqlstring, (err, res) => {
       if (err) {
         console.log(err)
         row.details =
@@ -647,7 +565,7 @@ async function select_update_ecosian(row) {
       ? "'" + row.S_Objectname + "'"
       : row.S_Objectname
     };`
-  CONNECT[row.S_DB_Id.toString()].query(sqlstring, (err, res) => {
+  CONNECTION[row.S_DB_Id.toString()].query(sqlstring, (err, res) => {
     if (err) {
       console.log(err)
       row.details =
@@ -669,7 +587,7 @@ async function select_update_ecosian2(M_database, S_database, row) {
     };`
   var value = await (async function () {
     return new Promise((resolve, reject) => {
-      CONNECT[row.M_DB_Id.toString()].query(sqlstring, (err, res) => {
+      CONNECTION[row.M_DB_Id.toString()].query(sqlstring, (err, res) => {
         if (err) {
           console.log(err)
           row.details = "[에코시안 관련] 데이터를 SELECT하는데 오류가 있습니다."
@@ -691,7 +609,7 @@ async function select_update_ecosian2(M_database, S_database, row) {
         ? "'" + row.M_Objectname + "'"
         : row.M_Objectname
       };`
-    CONNECT[row.M_DB_Id.toString()].query(sqlstring, (err, res) => {
+    CONNECTION[row.M_DB_Id.toString()].query(sqlstring, (err, res) => {
       if (err) {
         console.log(err)
         row.details =
@@ -713,7 +631,7 @@ async function select_update_ecosian2(M_database, S_database, row) {
       : row.S_Objectname
     };`
 
-  CONNECT[row.S_DB_Id.toString()].query(sqlstring, (err, res) => {
+  CONNECTION[row.S_DB_Id.toString()].query(sqlstring, (err, res) => {
     if (err) {
       console.log(err)
       row.details =
@@ -735,7 +653,7 @@ async function select_update_obix(M_database, S_database, row) {
     } order by ttime desc limit 1;`
   var value = await (async function () {
     return new Promise((resolve, reject) => {
-      CONNECT[row.M_DB_Id.toString()].query(sqlstring, (err, res) => {
+      CONNECTION[row.M_DB_Id.toString()].query(sqlstring, (err, res) => {
         if (err) {
           console.log(err)
           row.details = "[에코시안 관련] 데이터를 SELECT하는데 오류가 있습니다."
@@ -800,7 +718,7 @@ async function select_update_obix(M_database, S_database, row) {
     values(2, '${row.M_Objectname}:${row.name}', ${_item['@_val']}, now(), '${_item['type'] == "bool" ? "BI" : "AI"}', 'modbus') as t 
     on duplicate key update log_value = t.log_value, log_time = t.log_time`
 
-    CONNECT[row.S_DB_Id.toString()].query(sqlstring, (err, res) => {
+    CONNECTION[row.S_DB_Id.toString()].query(sqlstring, (err, res) => {
       if (err) {
         console.log(err)
         row.details =
@@ -814,7 +732,7 @@ async function select_update_obix(M_database, S_database, row) {
 }
 
 let MATCHING = {}
-function initData() {
+function getMatchingDataFromExcel() {
   return new Promise(async (resolve, reject) => {
     //엑셀에 접근하여 한 행마다 비동기로 데이터를 주고 받게 만들어준다.
     console.log("[+] Start Sending Data : start")
@@ -865,82 +783,73 @@ function initData() {
 }
 function endDatabase(DATABASE) {
   return new Promise(async (resolve, reject) => {
-    await CONNECT[DATABASE.DB_Id].end()
+    await CONNECTION[DATABASE.DB_Id].end()
     resolve()
   })
 }
-function setDatabase(DATABASE) {
+function connectDatabase(database) {
   return new Promise(async (resolve, reject) => {
-    switch (DATABASE.DB_Type) {
+    let connection;
+    switch (database.DB_Type) {
       case 0: //MS-SQL
-        console.log("This database is MS-SQL")
         config = {
-          user: DATABASE.DB_Userid,
-          password: DATABASE.DB_Userpwd.toStrnig(),
-          database: DATABASE.DB_Name,
-          server: DATABASE.DB_Ip,
+          user: database.DB_Userid,
+          password: database.DB_Userpwd.toStrnig(),
+          database: database.DB_Name,
+          server: database.DB_Ip,
         }
         break
       case 1: //My-SQL
-        console.log("This database is My-SQL")
         config = {
-          host: DATABASE.DB_Ip,
-          port: DATABASE.DB_Port,
-          user: DATABASE.DB_Userid,
-          password: DATABASE.DB_Userpwd.toString(),
-          database: DATABASE.DB_Name,
+          host: database.DB_Ip,
+          port: database.DB_Port,
+          user: database.DB_Userid,
+          password: database.DB_Userpwd.toString(),
+          database: database.DB_Name,
           connectTimeout: 5000,
           dateStrings: "date",
         }
-        check = await connect_mysql(config)
-        if (check) {
-          CONNECT[DATABASE.DB_Id] = check
-        }
+        connection = await connectMysql(config)
+        CONNECTION[database.DB_Id] = connection
         break
       case 2: //Maria mysql 과 동일함
-        console.log("This database is Maria")
         config = {
-          host: DATABASE.DB_Ip,
-          port: DATABASE.DB_Port,
-          user: DATABASE.DB_Userid,
-          password: DATABASE.DB_Userpwd,
-          database: DATABASE.DB_Name,
+          host: database.DB_Ip,
+          port: database.DB_Port,
+          user: database.DB_Userid,
+          password: database.DB_Userpwd,
+          database: database.DB_Name,
           connectTimeout: 5000,
           dateStrings: "date",
         }
-        check = await connect_mysql(config)
-        if (check) {
-          CONNECT[DATABASE.DB_Id] = check
-        }
+        connection = await connectMysql(config)
+        CONNECTION[database.DB_Id] = connection
         break
       case 3: //PostgreSQL
-        console.log("This database is postgreSQL")
         //여기서 postgre접근한뒤 config 설정해준다.
         config = {
-          host: DATABASE.DB_Ip,
-          port: DATABASE.DB_Port,
-          user: DATABASE.DB_Userid,
-          password: DATABASE.DB_Userpwd,
-          database: DATABASE.DB_Name,
+          host: database.DB_Ip,
+          port: database.DB_Port,
+          user: database.DB_Userid,
+          password: database.DB_Userpwd,
+          database: database.DB_Name,
           dateStrings: "date", //이거 되는지 아직 모름
         }
-        check = await connect_postgresql(config) //연결이 되면 connection을 반환한다.바로 접근가능해짐
-        if (check) {
-          CONNECT[DATABASE.DB_Id] = check
-        }
+        connection = await connectPostgresql(config) //연결이 되면 connection을 반환한다.바로 접근가능해짐
+        CONNECTION[database.DB_Id] = connection
         break
       case 4: //Acces
         console.log("This database is Acces")
         //.mdb에 접근해서 무언가 해야함.
         break
       default:
-        console.log("[-] This is Wrong DataType, DB_Id is :", DATABASE[i].DB_Id)
+        console.log("[-] This is Wrong DataType, DB_Id is :", database[i].DB_Id)
         break
     }
     resolve()
   })
 }
-async function get_database_info() {
+async function getDatabaseDataFromExcel() {
   return new Promise(async (resolve, reject) => {
     //비동기로 엑셀에서 데이터를 긁어온다.
     console.log("[+] Get Excel Data : start")
@@ -976,17 +885,16 @@ async function get_database_info() {
     resolve(true)
   })
 }
-async function start_sending() {
+async function startSending() {
   return new Promise(async (resolve, reject) => {
     // 통신 별로 루프를 돌린다.
     for (const match in MATCHING) {
       // 통신 연결
-      const [A, B] = match.split(",")
-      console.log("start_sending:", DATABASE[A])
-      // console.log("DBDB[B]:", DATABASE[B])
-      if (DATABASE[A] != undefined && DATABASE[B] != undefined) {
-        await setDatabase(DATABASE[A])
-        await setDatabase(DATABASE[B])
+      const [master, server] = match.split(",")
+      console.log("start_sending:", DATABASE[master])
+      if (DATABASE[master] != undefined && DATABASE[server] != undefined) {
+        await connectDatabase(DATABASE[master])
+        await connectDatabase(DATABASE[server])
       } else {
         // console.log("something wrong")
         continue
@@ -1000,16 +908,16 @@ async function start_sending() {
             //select_insert(tmp);
             break
           case "insert_ecosian":
-            insert_ecosian2(DATABASE[A], DATABASE[B], element)
+            insert_ecosian2(DATABASE[master], DATABASE[server], element)
             break
           case "update":
-            select_update2(DATABASE[A], DATABASE[B], element)
+            select_update2(DATABASE[master], DATABASE[server], element)
             break
           case "update_ecosian":
-            select_update_ecosian2(DATABASE[A], DATABASE[B], element)
+            select_update_ecosian2(DATABASE[master], DATABASE[server], element)
             break
           case "update_ecosian_obix":
-            select_update_obix(DATABASE[A], DATABASE[B], element)
+            select_update_obix(DATABASE[master], DATABASE[server], element)
             break
           default:
             break
@@ -1024,11 +932,11 @@ async function start_sending() {
 
 //main()
 async function main() {
-  await get_database_info() //DB의 정보를 받는다.
-  await initData()
+  await getDatabaseDataFromExcel() //DB의 정보를 받는다.
+  await getMatchingDataFromExcel()
   let count = 0
   while (true) {
-    await start_sending()
+    await startSending()
     // console.log("count:", count)
     await sleep(60000)
     count += 1
@@ -1039,6 +947,28 @@ async function main() {
   }
 }
 main()
+
+function reConnectDatabse() {
+  for (const database in DATABASE) {
+    if (database.DB_Type === '1') {
+      if (CONNECTION[database.DB_Id] && CONNECTION[database.DB_Id].state === 'disconnected') {
+        console.error(database.Details, "이 연결되어 있지 않아 재연결하겠습니다.");
+        connectDatabase(database)
+      }
+    }
+    else if (database.DB_Type === '3') {
+      CONNECTION[database.DB_Id].query('SELECT 1', (err, result) => {
+        if (err) {
+          console.error('PostgreSQL 연결이 끊어졌습니다. 재연결 시도 중...');
+          connectDatabase(database);
+        }
+      });
+    }
+  }
+}
+setInterval(reConnectDatabse, 1000 * 60 * 10); // 10분 간격으로 데이터베이스 연결이 되었는지 확인한다.
+
+
 const sleep = (ms) => {
   return new Promise((resolve) => {
     setTimeout(resolve, ms)
