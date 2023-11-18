@@ -14,7 +14,7 @@ var Database = {
       });
     });
   },
-  get_targetChannels: function (id) {
+  getChannels: function (id) {
     return new Promise(function (resolve, reject) {
       connection.query(
         `SELECT * FROM modbus_channel WHERE network_id=${id}`,
@@ -215,8 +215,7 @@ var Database = {
     ipadr = data.split(":");
     console.log(ipadr);
     connection.query(
-      `UPDATE bacnet_device SET available=1 WHERE address='${
-        ipadr[0]
+      `UPDATE bacnet_device SET available=1 WHERE address='${ipadr[0]
       }' and port=${ipadr[1] != undefined ? parseInt(ipadr[1]) : 47808};`,
       function (error, rows, fields) {
         if (error) {

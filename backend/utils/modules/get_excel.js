@@ -4,7 +4,7 @@ const DBH = require("./database.js");
 const filePath = "./uploads/Modbus.xlsx";
 const BacnetfilePath = "./uploads/Bacnet.xlsx";
 var Excel = {
-  loadExcelFile_modbus: function () {
+  insertModbusInfoByExcel: function () {
     return new Promise(async function (resolve, reject) {
       try {
         var page, i;
@@ -89,38 +89,38 @@ var Excel = {
                 typeof sheetData[i][17] === "undefined"
                   ? null
                   : typeof sheetData[i][17].value.result === "undefined"
-                  ? sheetData[i][17].value
-                  : sheetData[i][17].value.result;
+                    ? sheetData[i][17].value
+                    : sheetData[i][17].value.result;
               Data.m_w_fc =
                 typeof sheetData[i][18] === "undefined"
                   ? null
                   : typeof sheetData[i][18].value.result === "undefined"
-                  ? sheetData[i][18].value
-                  : sheetData[i][18].value.result;
+                    ? sheetData[i][18].value
+                    : sheetData[i][18].value.result;
               Data.m_w_addr =
                 typeof sheetData[i][19] === "undefined"
                   ? null
                   : typeof sheetData[i][19].value.result === "undefined"
-                  ? sheetData[i][19].value
-                  : sheetData[i][19].value.result;
+                    ? sheetData[i][19].value
+                    : sheetData[i][19].value.result;
               Data.m_w_dattype =
                 typeof sheetData[i][20] === "undefined"
                   ? null
                   : typeof sheetData[i][20].value.result === "undefined"
-                  ? sheetData[i][20].value
-                  : sheetData[i][20].value.result;
+                    ? sheetData[i][20].value
+                    : sheetData[i][20].value.result;
               Data.m_w_scale =
                 typeof sheetData[i][21] === "undefined"
                   ? null
                   : typeof sheetData[i][21].value.result === "undefined"
-                  ? sheetData[i][21].value
-                  : sheetData[i][21].value.result;
+                    ? sheetData[i][21].value
+                    : sheetData[i][21].value.result;
               Data.m_w_offset =
                 typeof sheetData[i][22] === "undefined"
                   ? null
                   : typeof sheetData[i][22].value.result === "undefined"
-                  ? sheetData[i][22].value
-                  : sheetData[i][22].value.result;
+                    ? sheetData[i][22].value
+                    : sheetData[i][22].value.result;
 
               await DBH.device_insert(page, Data);
             }

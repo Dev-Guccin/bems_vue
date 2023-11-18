@@ -6,27 +6,28 @@ const net = require("net");
 let Excel = require("./get_excel.js");
 const { type } = require("os");
 const { select_not_null } = require("./database.js");
-const sockets = [];
-const options = [];
-const clients = [];
-const rtu_clients = [];
-const tcp_clients = [];
+
+const RTU_CLIENTS = [];
+const TCP_CLIENTS = [];
 
 let count = 0;
 
-let Networks;
-let channel_range = {};
-modbus_poll();
+let NETWORKS;
+let SOCKETS = [];
+let OPTIONS = [];
+let CHANNEL_RANGE = {};
+
+main();
 require("events").EventEmitter.prototype._maxListeners = 100;
 
-async function modbus_poll() {
-  await Excel.loadExcelFile_modbus();
-  Networks = await DBH.device_select("modbus_network");
-  console.log(Networks);
+async function main() {
+  await Excel.insertModbusInfoByExcel();
+  NETWORKS = await DBH.device_select("modbus_network");
+  console.log(NETWORKS);
   //modbus poll시작하기 전에 excel정합성 확인
-  for (let key in channel_range) {
-    let h = channel_range[key].start;
-    let t = channel_range[key].end;
+  for (let key in CHANNEL_RANGE) {
+    let h = CHANNEL_RANGE[key].start;
+    let t = CHANNEL_RANGE[key].end;
     for (let i = 0; i < Datas[key].length; i++) {
       console.log(Datas[key][i]);
       if (Datas[key][i].m_addr < h || Datas[key][i].m_addr > t) {
@@ -35,29 +36,41 @@ async function modbus_poll() {
       }
     }
   }
-  console.log("excel 정합성ok");
-  console.log("start 통신"); //,Networks, Channels, Datas)
-  modbusStart();
+  console.log("excel 정합성 확인 완료");
+  startModbus();
 }
 
-async function modbusStart() {
-  for (let i = 0; i < Networks.length; i++) {
-    // 소켓을 설정하고 열어준다.
-    if (Networks[i].active == 0) continue;
 
-    if (Networks[i].network_type == "tcp/ip") {
-      sockets[i] = new net.Socket(); //socket을 객체로 다루기 위해 설정해준다.
-      tcp_clients[i] = [];
-      options[i] = {
-        host: Networks[i].address,
-        port: Networks[i].port,
+setInterval(() => {
+  for (let i = 0; i < SOCKETS.length; i++) {
+
+    // 상대 소켓에 문제가 있는경우 다시 연결시켜 준다.
+    if (SOCKETS[i].readyState === "closed") {
+      SOCKETS[i].connect(OPTIONS[i]);
+    }
+  }
+}, 5000)
+
+async function startModbus() {
+  console.log("start modbus"); //,Networks, Channels, Datas)
+  for (let i = 0; i < NETWORKS.length; i++) {
+    // 소켓을 설정하고 열어준다.
+    if (NETWORKS[i].active == 0) continue;
+
+    if (NETWORKS[i].network_type == "tcp/ip") {
+      // 1. Socket 생성
+      SOCKETS[i] = new net.Socket(); //socket을 객체로 다루기 위해 설정해준다.
+      TCP_CLIENTS[i] = [];
+      OPTIONS[i] = {
+        host: NETWORKS[i].address,
+        port: NETWORKS[i].port,
         autoReconnect: true,
-        timeout: Networks[i].wait_time,
+        timeout: NETWORKS[i].wait_time,
       };
       let device_list = [];
-      let targetchannels = await DBH.get_targetChannels(Networks[i].id); // device id별 채널 가져온다.
-      for (let fi = 0; fi < targetchannels.length; fi++) {
-        let slave_id = targetchannels[fi].device_address;
+      let channels = await DBH.getChannels(NETWORKS[i].id); // device id별 채널 가져온다.
+      for (let fi = 0; fi < channels.length; fi++) {
+        let slave_id = channels[fi].device_address;
         if (device_list[slave_id] == undefined) {
           device_list[slave_id] = [fi];
         } else {
@@ -66,15 +79,20 @@ async function modbusStart() {
       }
       console.log("devicelist :", device_list);
 
+      // 2. TCP 생성
       for (let di = 0; di < device_list.length; di++) {
         if (device_list[di] != undefined) {
           console.log("di:", di);
-          tcp_clients[i][di] = new Modbus.client.TCP(sockets[i], di); // tcp를 열어준다.
+          TCP_CLIENTS[i][di] = new Modbus.client.TCP(SOCKETS[i], di); // tcp를 열어준다.
         }
       }
-      sockets[i].connect(options[i]); // 실제로 포트를 열어준다.
-      sockets[i].on("connect", async function () {
-        console.log("connect!!:", options[i]);
+
+      // 3. Socket 연결
+      SOCKETS[i].connect(OPTIONS[i]); // 실제로 포트를 열어준다.
+
+      // 4. Socket Event 설정
+      SOCKETS[i].on("connect", async function () {
+        console.log("connect!!:", OPTIONS[i]);
         //소켓이 연결되는 경우 어떻게 사용할 건지
         for (let di = 0; di < device_list.length; di++) {
           if (device_list[di] != undefined) {
@@ -83,128 +101,138 @@ async function modbusStart() {
             for (let ci = 0; ci < device_list[di].length; ci++) {
               // console.log(device_list[di][ci])
               let fi = device_list[di][ci];
-              let slave_id = targetchannels[fi].device_address;
+              let slave_id = channels[fi].device_address;
 
               //frame의 개수만큼 반복하는 코드
-              if (targetchannels[fi].active == 1) {
+              if (channels[fi].active == 1) {
                 let func;
                 // active 상태일때만 반복시킴
-                switch (targetchannels[fi].function_code) {
+                switch (channels[fi].function_code) {
                   case 0: //Read Coils
-                    func = tcp_clients[i][slave_id].readCoils(
-                      targetchannels[fi].start_address,
-                      targetchannels[fi].quantity
+                    func = TCP_CLIENTS[i][slave_id].readCoils(
+                      channels[fi].start_address,
+                      channels[fi].quantity
                     );
                     break;
                   case 1: //Read Discrete Input
-                    func = tcp_clients[i][slave_id].readDiscreteInputs(
-                      targetchannels[fi].start_address,
-                      targetchannels[fi].quantity
+                    func = TCP_CLIENTS[i][slave_id].readDiscreteInputs(
+                      channels[fi].start_address,
+                      channels[fi].quantity
                     );
                     break;
                   case 3: //Read Holding Registers
-                    func = tcp_clients[i][slave_id].readHoldingRegisters(
-                      targetchannels[fi].start_address,
-                      targetchannels[fi].quantity
+                    func = TCP_CLIENTS[i][slave_id].readHoldingRegisters(
+                      channels[fi].start_address,
+                      channels[fi].quantity
                     );
                     break;
                   case 4: //Read Input Registers
-                    func = tcp_clients[i][slave_id].readInputRegisters(
-                      targetchannels[fi].start_address,
-                      targetchannels[fi].quantity
+                    func = TCP_CLIENTS[i][slave_id].readInputRegisters(
+                      channels[fi].start_address,
+                      channels[fi].quantity
                     );
                     break;
                 }
-                DBH.channel_inc("tx", targetchannels[fi].id);
+                DBH.channel_inc("tx", channels[fi].id);
                 try {
                   let res = await func;
                   count += 1;
                   console.log("count:", count);
                   console.log("res:", res.response._body.valuesAsArray);
-                  response_process(targetchannels[fi], res);
-                  await sleep(Networks[i].period);
+                  response_process(channels[fi], res);
+                  await sleep(NETWORKS[i].period);
                 } catch (err) {
-                  DBH.channel_inc("err", targetchannels[fi].id);
+                  DBH.channel_inc("err", channels[fi].id);
                   console.error("socket network error");
                   console.error("err:", err);
-                  console.error(Networks[i].address);
+                  console.error(NETWORKS[i].address);
                   console.error(arguments);
                 }
               }
             }
           }
         }
-        sockets[i].end();
+        SOCKETS[i].end();
       }); //on
-      sockets[i].on("error", function (err) {
-        //에러가 발생하면 어떻게 할건지
-        console.log("errored !!!!!!", Networks[i].address);
-        console.log("err:", err);
+      SOCKETS[i].on("error", function (err) {
+        console.error("errored !!!!!!", NETWORKS[i].address);
+        console.error("err:", err);
       });
-      sockets[i].on("close", function () {
-        console.log("closed!!!");
+      SOCKETS[i].on("close", function () {
+        console.error("closed!!!");
         DBH.check_max_limit();
-        sockets[i].connect(options[i]); // 실제로 포트를 열어준다.
       });
-    } else if (Networks[i].network_type == "rtu") {
-      // 소켓을 열어준다.
-      sockets[i] = new SerialPort(Networks[i].address, {
+    } else if (NETWORKS[i].network_type == "rtu") {
+      // 1. Socket 생성 (Serial)
+      SOCKETS[i] = new SerialPort(NETWORKS[i].address, {
         baudRate: 9600,
       });
-      rtu_clients[i] = [];
-      sockets[i].on("open", async function () {
-        let targetchannels = await DBH.get_targetChannels(Networks[i].id); // ip의 id에 해당하는 데이터들을 가져온다.
-        for (let fi = 0; fi < targetchannels.length; fi++) {
+      RTU_CLIENTS[i] = [];
+
+      // 2. Socket Event 설정
+      SOCKETS[i].on("open", async function () {
+        const channels = await DBH.getChannels(NETWORKS[i].id); // ip의 id에 해당하는 데이터들을 가져온다.
+        for (let fi = 0; fi < channels.length; fi++) {
           // socket과 slave_id를 통해 clients를 열어준다.
           // device_id를 뽑아서 확인한다.
-          let slave_id = targetchannels[fi].device_address;
-          if (rtu_clients[i][slave_id] == undefined) {
-            rtu_clients[i][slave_id] = new Modbus.client.RTU(
-              sockets[i],
+          let slave_id = channels[fi].device_address;
+
+          // 3. RTU 통신 생성
+          if (RTU_CLIENTS[i][slave_id] == undefined) {
+            RTU_CLIENTS[i][slave_id] = new Modbus.client.RTU(
+              SOCKETS[i],
               slave_id
             ); // 선언해서 device_id로 rtu 연동한다.
           }
-          if (targetchannels[fi].active == 1) {
+          if (channels[fi].active == 1) {
             // active 상태일때만 반복시킴
-            switch (targetchannels[fi].function_code) {
+            switch (channels[fi].function_code) {
               case 0: //Read Coils
-                func = rtu_clients[i][slave_id].readCoils(
-                  targetchannels[fi].start_address,
-                  targetchannels[fi].quantity
+                func = RTU_CLIENTS[i][slave_id].readCoils(
+                  channels[fi].start_address,
+                  channels[fi].quantity
                 );
                 break;
               case 1: //Read Discrete Input
-                func = rtu_clients[i][slave_id].readDiscreteInputs(
-                  targetchannels[fi].start_address,
-                  targetchannels[fi].quantity
+                func = RTU_CLIENTS[i][slave_id].readDiscreteInputs(
+                  channels[fi].start_address,
+                  channels[fi].quantity
                 );
                 break;
               case 3: //Read Holding Registers
-                func = rtu_clients[i][slave_id].readHoldingRegisters(
-                  targetchannels[fi].start_address,
-                  targetchannels[fi].quantity
+                func = RTU_CLIENTS[i][slave_id].readHoldingRegisters(
+                  channels[fi].start_address,
+                  channels[fi].quantity
                 );
                 break;
               case 4: //Read Input Registers
-                func = rtu_clients[i][slave_id].readInputRegisters(
-                  targetchannels[fi].start_address,
-                  targetchannels[fi].quantity
+                func = RTU_CLIENTS[i][slave_id].readInputRegisters(
+                  channels[fi].start_address,
+                  channels[fi].quantity
                 );
                 break;
             }
           }
-          DBH.channel_inc("tx", targetchannels[fi].id);
+          DBH.channel_inc("tx", channels[fi].id);
           try {
             let res = await func;
             console.log(res.response._body.valuesAsArray);
-            response_process(targetchannels[fi], res);
+            response_process(channels[fi], res);
           } catch (err) {
-            DBH.channel_inc("err", targetchannels[fi].id);
+            DBH.channel_inc("err", channels[fi].id);
             console.error("socket network error");
-            console.error(Networks[i].address);
+            console.error(NETWORKS[i].address);
             console.error(arguments);
           }
         }
+      });
+      SOCKETS[i].on("error", function (err) {
+        console.error("errored !!!!!!", NETWORKS[i].address);
+        console.error("err:", err);
+      });
+      SOCKETS[i].on("close", function () {
+        console.error("closed!!!");
+        DBH.check_max_limit();
       });
     }
   }
@@ -520,7 +548,7 @@ async function modbus_output() {
           });
       });
       socket.on("error", console.error);
-      socket.connect(options);
+      socket.connect(OPTIONS);
     }
   }
 }

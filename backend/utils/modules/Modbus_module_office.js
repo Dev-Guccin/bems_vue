@@ -20,7 +20,7 @@ modbus_poll();
 require("events").EventEmitter.prototype._maxListeners = 100;
 
 async function modbus_poll() {
-  await Excel.loadExcelFile_modbus();
+  await Excel.insertModbusInfoByExcel();
   Networks = await DBH.device_select("modbus_network");
   console.log(Networks);
   //modbus poll시작하기 전에 excel정합성 확인
@@ -55,7 +55,7 @@ async function modbusStart() {
         timeout: Networks[i].wait_time,
       };
       let device_list = [];
-      let targetchannels = await DBH.get_targetChannels(Networks[i].id); // device id별 채널 가져온다.
+      let targetchannels = await DBH.getChannels(Networks[i].id); // device id별 채널 가져온다.
       for (let fi = 0; fi < targetchannels.length; fi++) {
         let slave_id = targetchannels[fi].device_address;
         if (device_list[slave_id] == undefined) {
@@ -153,7 +153,7 @@ async function modbusStart() {
       });
       rtu_clients[i] = [];
       sockets[i].on("open", async function () {
-        let targetchannels = await DBH.get_targetChannels(Networks[i].id); // ip의 id에 해당하는 데이터들을 가져온다.
+        let targetchannels = await DBH.getChannels(Networks[i].id); // ip의 id에 해당하는 데이터들을 가져온다.
         for (let fi = 0; fi < targetchannels.length; fi++) {
           // socket과 slave_id를 통해 clients를 열어준다.
           // device_id를 뽑아서 확인한다.
