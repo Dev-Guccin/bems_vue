@@ -49,7 +49,7 @@ setInterval(() => {
       SOCKETS[i].connect(OPTIONS[i]);
     }
   }
-}, 5000)
+}, 1000 * 30) // 30초에 한번씩 소켓기동을 확인한다.
 
 async function startModbus() {
   console.log("start modbus"); //,Networks, Channels, Datas)
