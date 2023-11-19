@@ -67,7 +67,7 @@ let Handler = {
       else if (target == 'xml') {
         await Handler.delete_module('xml') // 해당 통신 종료
         console.log('[+] start xml module!!!')
-        await Handler.start_module('xml', '../ssdvm/dvm/ssdvm_main.js') // 재실행
+        await Handler.start_module('xml', '../xml/dvm/ssdvm_main.js') // 재실행
         resolve(true)
       }
       else {
