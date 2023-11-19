@@ -1,23 +1,19 @@
-Error: connect ETIMEDOUT
-    at Connection._handleConnectTimeout (C:\4msys\backend\node_modules\mysql\lib\Connection.js:409:13)
-    at Object.onceWrapper (events.js:421:28)
-    at Socket.emit (events.js:315:20)
-    at Socket._onTimeout (net.js:483:8)
-    at listOnTimeout (internal/timers.js:554:17)
-    at processTimers (internal/timers.js:497:7)
-    --------------------
-    at Protocol._enqueue (C:\4msys\backend\node_modules\mysql\lib\protocol\Protocol.js:144:48)
-    at Protocol.handshake (C:\4msys\backend\node_modules\mysql\lib\protocol\Protocol.js:51:23)
-    at Connection.connect (C:\4msys\backend\node_modules\mysql\lib\Connection.js:116:18)
-    at Object.<anonymous> (C:\4msys\backend\utils\modules\database.js:6:12)
-    at Module._compile (internal/modules/cjs/loader.js:1063:30)
-    at Object.Module._extensions..js (internal/modules/cjs/loader.js:1092:10)
-    at Module.load (internal/modules/cjs/loader.js:928:32)
-    at Function.Module._load (internal/modules/cjs/loader.js:769:14)
-    at Module.require (internal/modules/cjs/loader.js:952:19)
-    at Module.Hook._require.Module.require (C:\Users\ghks2\AppData\Roaming\npm\node_modules\pm2\node_modules\require-in-the-middle\index.js:80:39) {
-  errorno: 'ETIMEDOUT',
-  code: 'ETIMEDOUT',
-  syscall: 'connect',
-  fatal: true
+Debugger attached.
+Error: The module '\\?\C:\Users\ghks2.DESKTOP-DH3JS7E\4msys\bems_vue\backend\node_modules\@serialport\bindings\build\Release\bindings.node'
+was compiled against a different Node.js version using
+NODE_MODULE_VERSION 83. This version of Node.js requires
+NODE_MODULE_VERSION 93. Please try re-compiling or re-installing
+the module (for instance, using `npm rebuild` or `npm install`).
+    at Object.Module._extensions..node (node:internal/modules/cjs/loader:1239:18)
+    at Module.load (node:internal/modules/cjs/loader:1033:32)
+    at Function.Module._load (node:internal/modules/cjs/loader:868:12)
+    at Module.require (node:internal/modules/cjs/loader:1057:19)
+    at Module.Hook._require.Module.require (C:\Users\ghks2.DESKTOP-DH3JS7E\4msys\bems_vue\backend\node_modules\require-in-the-middle\index.js:80:39)
+    at require (node:internal/modules/cjs/helpers:103:18)
+    at bindings (C:\Users\ghks2.DESKTOP-DH3JS7E\4msys\bems_vue\backend\node_modules\bindings\bindings.js:112:48)
+    at Object.<anonymous> (C:\Users\ghks2.DESKTOP-DH3JS7E\4msys\bems_vue\backend\node_modules\@serialport\bindings\lib\win32.js:1:36)
+    at Module._compile (node:internal/modules/cjs/loader:1155:14)
+    at Object.Module._extensions..js (node:internal/modules/cjs/loader:1209:10) {
+  code: 'ERR_DLOPEN_FAILED'
 }
+Waiting for the debugger to disconnect...

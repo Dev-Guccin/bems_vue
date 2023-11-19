@@ -1,0 +1,31 @@
+Debugger attached.
+Error: ER_NO_SUCH_TABLE: Table 'bems.realtime_table' doesn't exist
+    at Query.Sequence._packetToError (C:\Users\ghks2.DESKTOP-DH3JS7E\4msys\bems_vue\backend\node_modules\mysql\lib\protocol\sequences\Sequence.js:47:14)
+    at Query.ErrorPacket (C:\Users\ghks2.DESKTOP-DH3JS7E\4msys\bems_vue\backend\node_modules\mysql\lib\protocol\sequences\Query.js:79:18)
+    at Protocol._parsePacket (C:\Users\ghks2.DESKTOP-DH3JS7E\4msys\bems_vue\backend\node_modules\mysql\lib\protocol\Protocol.js:291:23)
+    at Parser._parsePacket (C:\Users\ghks2.DESKTOP-DH3JS7E\4msys\bems_vue\backend\node_modules\mysql\lib\protocol\Parser.js:433:10)
+    at Parser.write (C:\Users\ghks2.DESKTOP-DH3JS7E\4msys\bems_vue\backend\node_modules\mysql\lib\protocol\Parser.js:43:10)
+    at Protocol.write (C:\Users\ghks2.DESKTOP-DH3JS7E\4msys\bems_vue\backend\node_modules\mysql\lib\protocol\Protocol.js:38:16)
+    at Socket.<anonymous> (C:\Users\ghks2.DESKTOP-DH3JS7E\4msys\bems_vue\backend\node_modules\mysql\lib\Connection.js:88:28)
+    at Socket.<anonymous> (C:\Users\ghks2.DESKTOP-DH3JS7E\4msys\bems_vue\backend\node_modules\mysql\lib\Connection.js:526:10)
+    at Socket.emit (node:events:513:28)
+    at addChunk (node:internal/streams/readable:315:12)
+    --------------------
+    at Protocol._enqueue (C:\Users\ghks2.DESKTOP-DH3JS7E\4msys\bems_vue\backend\node_modules\mysql\lib\protocol\Protocol.js:144:48)
+    at Connection.query (C:\Users\ghks2.DESKTOP-DH3JS7E\4msys\bems_vue\backend\node_modules\mysql\lib\Connection.js:198:25)
+    at Object.batch_device_select (C:\Users\ghks2.DESKTOP-DH3JS7E\4msys\bems_vue\backend\utils\modules\database.js:196:16)
+    at Object.<anonymous> (C:\Users\ghks2.DESKTOP-DH3JS7E\4msys\bems_vue\backend\utils\modules\Batch_module.js:7:5)
+    at Module._compile (node:internal/modules/cjs/loader:1155:14)
+    at Object.Module._extensions..js (node:internal/modules/cjs/loader:1209:10)
+    at Module.load (node:internal/modules/cjs/loader:1033:32)
+    at Function.Module._load (node:internal/modules/cjs/loader:868:12)
+    at Object.<anonymous> (C:\Users\ghks2.DESKTOP-DH3JS7E\4msys\bems_vue\backend\node_modules\pm2\lib\ProcessContainerFork.js:33:23)
+    at Module._compile (node:internal/modules/cjs/loader:1155:14) {
+  code: 'ER_NO_SUCH_TABLE',
+  errno: 1146,
+  sqlMessage: "Table 'bems.realtime_table' doesn't exist",
+  sqlState: '42S02',
+  index: 0,
+  sql: 'SELECT * from realtime_table'
+}
+Waiting for the debugger to disconnect...
