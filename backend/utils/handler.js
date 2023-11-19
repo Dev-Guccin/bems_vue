@@ -63,7 +63,14 @@ let Handler = {
         await Handler.delete_module('batch') // 해당 통신 종료
         await Handler.start_module('batch', './utils/modules/Batch_module.js') // 재실행
         resolve(true)
-      } else {
+      }
+      else if (target == 'xml') {
+        await Handler.delete_module('xml') // 해당 통신 종료
+        console.log('[+] start xml module!!!')
+        await Handler.start_module('xml', '../ssdvm/dvm/ssdvm_main.js') // 재실행
+        resolve(true)
+      }
+      else {
         //target == wrong
         console.log('target wrong')
         resolve(false)

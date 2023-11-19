@@ -16,6 +16,7 @@ let config = {
     bacnet: 1,
     database: 0,
     batch: 1,
+    xml: 1,
   },
 };
 

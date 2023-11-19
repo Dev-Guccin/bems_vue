@@ -29,6 +29,11 @@ const init = {
       await Handler.restart_only('batch')
     }
     console.log('batch checked!')
+    if (config.module.xml == 1) {
+      console.log('init xml!!')
+      await Handler.restart_only('xml')
+    }
+    console.log('xml checked!')
   },
 }
 module.exports = init
